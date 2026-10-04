@@ -4,14 +4,12 @@ let listaMedicosGlobal = [];
 
 function cerrarSesion() {
     localStorage.removeItem("token_seguridad");
-    localStorage.removeItem("usuario_rol");
     localStorage.removeItem("usuario_id");
     window.location.href = "../index.html";
 }
 
 document.addEventListener("DOMContentLoaded", async function () {
     const token = localStorage.getItem("token_seguridad");
-    const rol = localStorage.getItem("usuario_rol");
 
     // Configurar evento de cierre de sesión
     const btnLogout = document.getElementById("btnCerrarSesion");
@@ -20,13 +18,14 @@ document.addEventListener("DOMContentLoaded", async function () {
     }
 
     // Validación estricta de seguridad en el cliente
-    if (!token || !rol || rol.trim().toLowerCase() !== "administrador") {
+    if (!token) {
         alert("Acceso denegado. Inicie sesión con credenciales de Administrador.");
         window.location.href = "../index.html";
         return;
     }
 
     try {
+        cargarAdministrador();
         // Petición al endpoint consolidado del Administrador
         const respuesta = await fetch(`${API_URL}Dashboard/administrador`, {
             method: "GET",
@@ -40,7 +39,6 @@ document.addEventListener("DOMContentLoaded", async function () {
             const datos = await respuesta.json();
 
             // 1. Renderizar información básica y métricas globales
-            document.getElementById("txtAdmin").innerText = `Bienvenido, ${datos.nombreAdmin}`;
             document.getElementById("lblTotalPacientes").innerText = datos.metricasGlobales.totalPacientes;
             document.getElementById("lblTotalMedicos").innerText = datos.metricasGlobales.totalMedicos;
             document.getElementById("lblAlertasRiesgo").innerText = datos.metricasGlobales.alertasRiesgo;
@@ -68,6 +66,40 @@ document.addEventListener("DOMContentLoaded", async function () {
         alert("No se pudo establecer conexión con el servidor central.");
     }
 });
+
+async function cargarAdministrador()
+{
+    try {
+        const token = localStorage.getItem("token_seguridad");
+        const id = localStorage.getItem("usuario_id");
+        if (!token || !id) {
+            console.error("No se encontró el token o el ID del usuario en el almacenamiento local.");
+            return;
+        }
+
+        // CORREGIDO: Apuntamos al endpoint correspondiente
+        const respuesta = await fetch(`${API_URL}Administrador/MisDatos/${id}`, {
+            method: "GET",
+            headers: {
+                "Authorization": "Bearer " + token.trim(),
+                "Content-Type": "application/json"
+            }
+        });
+
+        if (respuesta.ok) {
+            datosadmin = await respuesta.json();
+            console.log("Datos recibidos del servidor:", datosadmin);
+            var datos = datosadmin.usuario; 
+            console.log(datos);
+            var nombreAdmin= datos.nombre + " " + datos.apellido;
+            document.getElementById("txtAdmin").innerText = `Bienvenido, ${nombreAdmin}`;
+        }
+    }
+    catch (error) {
+        console.error("Error en la petición fetch de datos personales:", error);
+    }
+}
+
 
 // --- RENDERIZADO DINÁMICO DE LA TABLA DE PACIENTES ---
 function inyectarTablaPacientes(pacientes) {

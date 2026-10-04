@@ -4,13 +4,10 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Sistema de Monitoreo - Hemoglobina</title>
-  
+      <link rel="stylesheet" href="https://cloudflare.com">
   <!-- LIBRERÍAS DE CARGA PRIORITARIA (RENDIMIENTO OPTIMIZADO) -->
-  <script src="https://jsdelivr.net"></script>
+
   <!-- Generación de PDFs en el cliente sin saturar la API -->
-  <script src="https://cloudflare.com"></script>
-  <script src="https://cloudflare.com"></script>
-  
   <style>
     :root {
       --bg-gradient: linear-gradient(-45deg, #0f172a, #1e293b, #1e3a8a, #0f172a);
@@ -141,9 +138,9 @@
 
     <div class="right-section">
       <h3>Evolución de Niveles de Hemoglobina</h3>
-      <div class="chart-container">
-        <canvas id="graficoHemoglobina"></canvas>
-      </div>
+<div class="chart-container" style="position: relative; height:320px; width:100%;">
+    <canvas id="graficoHemoglobina"></canvas>
+</div>
     </div>
   </div>
 

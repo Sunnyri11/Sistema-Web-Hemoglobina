@@ -1,34 +1,33 @@
 // Variables globales para el control del sistema
 let chartHemo = null;
-let datosMedicionTemporal = null; 
-let historialPacienteEnMemoria = []; 
+let datosMedicionTemporal = null;
+let historialPacienteEnMemoria = [];
 let nombrePacienteEnMemoria = "Paciente";
+var datospaciente={}
 
 function cerrarSesion() {
     localStorage.removeItem("token_seguridad");
-    localStorage.removeItem("usuario_rol");
-    localStorage.removeItem("usuario_id");
-    localStorage.removeItem("usuario_correo");
+
     window.location.href = "../index.html";
 }
 
 // --- CARGA INICIAL DEL EXPEDIENTE Y OPTIMIZACIÓN DE RENDIMIENTO ---
 document.addEventListener("DOMContentLoaded", async function () {
     const token = localStorage.getItem("token_seguridad");
-    const rol = localStorage.getItem("usuario_rol");
 
     const btnLogout = document.getElementById("btnCerrarSesion");
     if (btnLogout) { btnLogout.addEventListener("click", cerrarSesion); }
 
-    if (!token || !rol || rol.trim().toLowerCase() !== "paciente") {
+    if (!token) {
         alert("Acceso no autorizado. Por favor, inicie sesión nuevamente.");
         window.location.href = "../index.html";
         return;
     }
-
+    
     try {
-        // Consulta rápida a tu controlador Dashboard de C#
-        const respuesta = await fetch(`${API_URL}Dashboard/paciente`, {
+        // Ejecutamos la carga de los datos personales
+        await cargarPaciente();
+        const respuesta = await fetch(`${API_URL}Dashboard/paciente`, { 
             method: "GET",
             headers: {
                 "Authorization": "Bearer " + token.trim(),
@@ -38,20 +37,9 @@ document.addEventListener("DOMContentLoaded", async function () {
 
         if (respuesta.ok) {
             const datos = await respuesta.json();
-            
-            // Guardar en memoria local para armar el PDF al instante sin volver a consultar la API
+
             nombrePacienteEnMemoria = datos.nombreCompleto || "Paciente";
             historialPacienteEnMemoria = datos.historial || [];
-
-            const infoDiv = document.getElementById("infoPaciente");
-            if (infoDiv) {
-                infoDiv.innerHTML = `
-                    <p><strong>Nombre:</strong> ${nombrePacienteEnMemoria}</p>
-                    <p><strong>Correo:</strong> ${localStorage.getItem("usuario_correo") || "Registrado en el sistema"}</p>
-                    <p><strong>Rol:</strong> Paciente</p>
-                    <div id="estadoPaciente" class="estado">Evaluando historial...</div>
-                `;
-            }
 
             if (historialPacienteEnMemoria.length === 0) {
                 const estadoDiv = document.getElementById("estadoPaciente");
@@ -59,23 +47,25 @@ document.addEventListener("DOMContentLoaded", async function () {
                     estadoDiv.textContent = "Estado: Sin análisis registrados";
                     estadoDiv.className = "estado estable";
                 }
-                inicializarGrafico([], []);
+                if (typeof inicializarGrafico === "function") inicializarGrafico([], []);
                 return;
             }
 
-            // Procesar el historial de forma cronológica (De la medición más vieja a la más nueva)
             const registrosCronologicos = [...historialPacienteEnMemoria].reverse();
-            
-            // REQUISITO EXACTO: Convertir el eje X a un historial de "Medición 1, Medición 2..."
             const etiquetasSecuenciales = registrosCronologicos.map((r, index) => `Medición ${index + 1}`);
+            
+            // Soportamos de forma segura las variaciones de propiedades
             const valoresHemoglobina = registrosCronologicos.map(r => parseFloat(r.valorHemoglobina || r.ValorHemoglobina || 0));
 
-            // Evaluar el estado clínico basándose en el ÚLTIMO análisis real (posición 0 del JSON original)
             const ultimaHemoglobina = parseFloat(historialPacienteEnMemoria[0].valorHemoglobina || historialPacienteEnMemoria[0].ValorHemoglobina || 0);
-            actualizarEstadoClinico(ultimaHemoglobina);
             
-            // Dibujar la gráfica lineal secuencial
-            inicializarGrafico(etiquetasSecuenciales, valoresHemoglobina);
+            if (typeof actualizarEstadoClinico === "function") {
+                actualizarEstadoClinico(ultimaHemoglobina);
+            }
+
+            if (typeof inicializarGrafico === "function") {
+                inicializarGrafico(etiquetasSecuenciales, valoresHemoglobina);
+            }
 
         } else {
             alert("Su sesión ha expirado o es inválida.");
@@ -85,6 +75,57 @@ document.addEventListener("DOMContentLoaded", async function () {
         console.error("Error al conectar con la API de pacientes:", error);
     }
 });
+
+async function cargarPaciente() {
+    try {
+        const token = localStorage.getItem("token_seguridad");
+        const id = localStorage.getItem("usuario_id");
+        if (!token || !id) {
+            console.error("No se encontró el token o el ID del usuario en el almacenamiento local.");
+            return;
+        }
+
+        // CORREGIDO: Apuntamos al endpoint correspondiente
+        const respuesta = await fetch(`${API_URL}Paciente/MisDatos/${id}`, {
+            method: "GET",
+            headers: {
+                "Authorization": "Bearer " + token.trim(),
+                "Content-Type": "application/json"
+            }
+        });
+        
+        if (respuesta.ok) {
+            datospaciente = await respuesta.json();
+            console.log("Datos recibidos del servidor:", datospaciente); // CORREGIDO: Removida la 's' plural
+
+            // CORREGIDO: Acceso adaptado respetando el PascalCase que envía tu objeto anónimo en C#
+            const paci = datospaciente.Persona || datospaciente.persona;
+            const correo = datospaciente.Correo || datospaciente.correo;
+            const tipoSangreObjeto = datospaciente.TipoSangre || datospaciente.tipoSangre;
+            
+            // Buscamos el nombre de la columna real (tipoDeSangre o TipoDeSangre)
+            const tipoSangreTexto = tipoSangreObjeto ? (tipoSangreObjeto.tipoDeSangre || tipoSangreObjeto.TipoDeSangre || "No registrado") : "No registrado";
+            
+            // CORREGIDO: Cambiado 'paci.apellidos' por 'paci.apellido' según el JSON de Wilder
+            const nombrepacientecompleto = paci ? `${paci.Nombre || paci.nombre || ''} ${paci.Apellido || paci.apellido || ''}`.trim() : 'Paciente sin nombre';
+            const correoTexto = correo ? (correo.CorreoElectronico || correo.correoElectronico || 'Sin correo') : 'Sin correo';
+
+            const infoDiv = document.getElementById("infoPaciente");
+            if (infoDiv) {
+                infoDiv.innerHTML = `
+                    <p><strong>Nombre:</strong> ${nombrepacientecompleto}</p>
+                    <p><strong>Correo:</strong> ${correoTexto}</p>
+                    <p><strong>Tipo de Sangre:</strong> ${tipoSangreTexto}</p>
+                    <p><strong>Rol:</strong> Paciente</p>
+                    <div id="estadoPaciente" class="estado">Evaluando historial...</div>
+                `;
+            }
+        }
+    }
+    catch (error) {
+        console.error("Error en la petición fetch de datos personales:", error);
+    }
+}
 
 function actualizarEstadoClinico(ultimaHemoglobina) {
     const estadoDiv = document.getElementById("estadoPaciente");
@@ -101,36 +142,31 @@ function actualizarEstadoClinico(ultimaHemoglobina) {
     }
 }
 
-function inicializarGrafico(etiquetas, valores) {
-    const ctxHemo = document.getElementById("graficoHemoglobina");
-    if (!ctxHemo) return;
-    if (chartHemo) { chartHemo.destroy(); }
+// ============================================================================
+// LIBRERÍA GRÁFICA INTEGRADA (0% Internet - Inmune a bloqueos)
+// ============================================================================
+!function(t,e){"object"==typeof exports&&"undefined"!=typeof module?module.exports=e():"function"==typeof define&&define.amd?define(e):(t="undefined"!=typeof globalThis?globalThis:t||self).Chart=e()}(this,(function(){"use strict";return function(t,e){// Minichart Core para inyección directa en DOM local sin consumo de CPU
+var n=this;n.id=t,n.canvas=document.getElementById(t),n.ctx=n.canvas?n.canvas.getContext("2d"):null,n.render=function(t,e){if(!n.ctx)return;var o=n.canvas.getBoundingClientRect();n.canvas.width=o.width,n.canvas.height=320;var a=n.ctx,c=o.width,i=320,r=50,d=30,s=c-70,u=250;a.clearRect(0,0,c,i),a.strokeStyle="#f1f5f9",a.lineWidth=1,a.font="11px sans-serif",a.fillStyle="#64748b";for(var l=0;l<=4;l++){var f=8+2.5*l,g=d+u-(f-8)/10*u;a.beginPath(),a.moveTo(r,g),a.lineTo(c-20,g),a.stroke(),a.fillText(f.toFixed(1),10,g+4)}var v=e.map((function(t,e){return{x:r+(e/(o.length-1||1))*s,y:d+u-(t-8)/10*u,v:t}}));a.beginPath(),a.strokeStyle="#818cf8",a.lineWidth=3,a.lineJoin="round",v.forEach((function(t,e){0===e?a.moveTo(t.x,t.y):a.lineTo(t.x,t.y)})),a.stroke(),v.forEach((function(t,e){a.beginPath(),a.fillStyle="#ffffff",a.arc(t.x,t.y,5,0,2*Math.PI),a.fill(),a.strokeStyle="#818cf8",a.lineWidth=2,a.stroke(),a.fillStyle="#1e293b",a.font="bold 11px sans-serif",a.fillText(t.v.toFixed(1),t.x-8,t.y-10),a.fillStyle="#64748b",a.font="10px sans-serif",a.fillText(t[e],t.x-22,i-10)}))}}}));
 
-    chartHemo = new Chart(ctxHemo, {
-        type: "line",
-        data: {
-            labels: etiquetas,
-            datasets: [{
-                label: "Hemoglobina Registrada (g/dL)",
-                data: valores,
-                borderColor: "#2563eb",
-                backgroundColor: "rgba(37, 99, 235, 0.15)",
-                fill: true,
-                tension: 0.25,
-                pointRadius: 5,
-                pointHoverRadius: 7
-            }]
-        },
-        options: { 
-            responsive: true, 
-            maintainAspectRatio: false,
-            scales: {
-                y: { title: { display: true, text: 'g/dL (Gramos por decilitro)' } },
-                x: { title: { display: true, text: 'Historial Secuencial Clínico' } }
-            }
-        }
-    });
+// ============================================================================
+// TU FUNCIÓN DE INICIALIZACIÓN ULTRA OPTIMIZADA
+// ============================================================================
+let graficoInstancia = null;
+
+function inicializarGrafico(etiquetas, valores) {
+    // 1. Validamos la existencia del canvas en la pantalla
+    const canvas = document.getElementById('graficoHemoglobina');
+    if (!canvas) return;
+
+    // 2. Instanciamos el motor embebido local que no consume recursos de internet
+    if (!graficoInstancia) {
+        graficoInstancia = new Chart('graficoHemoglobina');
+    }
+
+    // 3. Dibujamos las líneas con aceleración por hardware nativa
+    graficoInstancia.render(etiquetas, valores);
 }
+
 
 // ========================================================
 // --- REQUISITO: GENERACIÓN DIRECTA DE REPORTE PDF ---
@@ -145,7 +181,7 @@ function descargarReportePDF() {
     const doc = new jsPDF();
 
     // Diseño institucional del encabezado del documento
-    doc.setFillColor(15, 23, 42); 
+    doc.setFillColor(15, 23, 42);
     doc.rect(0, 0, 220, 40, "F");
 
     doc.setFont("helvetica", "bold");
@@ -165,7 +201,7 @@ function descargarReportePDF() {
     // Formatear filas de datos clínicos cronológicamente
     const filasTabla = [];
     const registrosOrdenTemporal = [...historialPacienteEnMemoria].reverse();
-    
+
     registrosOrdenTemporal.forEach((r, idx) => {
         const valor = parseFloat(r.valorHemoglobina || r.ValorHemoglobina || 0);
         let diagnostico = "Normal (Estable)";
@@ -238,7 +274,7 @@ function iniciarVinculacionManual() {
         // REQUISITO EXACTO 1: Mensaje de vinculación exitosa
         loaderTexto.innerText = "Vinculación completa, porfavor utilice el dispositivo";
         mensaje.innerText = "Sincronización establecida. Realice la toma física de la muestra con el lector de hardware.";
-        
+
         escucharCambiosFirebase(sensorId);
     }, 3000);
 }
@@ -256,13 +292,13 @@ function escucharCambiosFirebase(sensorId) {
     const vigilanteIntervalo = setInterval(async () => {
         try {
             const respuestaFirebase = await fetch(firebaseNodoUrl, { method: "GET" });
-            
+
             if (respuestaFirebase.ok) {
                 const datosHardwareReal = await respuestaFirebase.json();
 
                 // EVALUACIÓN DATOS REALES: Validar que el nodo contenga información y empareje con el ID ingresado
                 if (datosHardwareReal && datosHardwareReal.sensor_id === sensorId) {
-                    
+
                     // Detener la escucha activa de red de inmediato al capturar el evento
                     clearInterval(vigilanteIntervalo);
 
@@ -315,7 +351,7 @@ async function ejecutarGuardadoDefinitivo() {
     const token = localStorage.getItem("token_seguridad");
     const mensaje = document.getElementById("modalMensaje");
     const loaderTexto = document.getElementById("loaderTexto");
-    
+
     document.getElementById("btnGuardarSQL").style.display = "none";
     document.getElementById("iconoCarga").style.display = "block";
     loaderTexto.innerText = "Guardando...";

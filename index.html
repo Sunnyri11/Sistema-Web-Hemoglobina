@@ -175,7 +175,7 @@
       Registrar nuevo paciente
     </a>
   </div>
-
+<script src="public/js/config.js"></script>
 <script>
   document.getElementById("formSistema").addEventListener("submit", async function (e) {
     e.preventDefault();
@@ -185,7 +185,7 @@
     const rol = document.getElementById("rol").value;
 
     try {
-      const respuesta = await fetch("https://api-prueba-sistema-hb.onrender.com/api/Autenticacion/login", {
+      const respuesta = await fetch(`${API_URL}Autenticacion/login`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json"
@@ -204,8 +204,6 @@
         
         // Guardar datos en localStorage
         localStorage.setItem("token_seguridad", datos.token);
-        localStorage.setItem("usuario_correo",email);
-        localStorage.setItem("usuario_rol", datos.rol);
         localStorage.setItem("usuario_id", datos.idEntidad);
 
         // Redirección basada en el rol que devuelve la API

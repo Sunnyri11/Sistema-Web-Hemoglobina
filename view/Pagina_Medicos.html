@@ -4,6 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Sistema HB - Panel Médico</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.8/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-sRIl4kxILFvY47J16cr9ZwB07vP4J8+LH7qKQnuqkuIAvNWLzeN8tE5YBujZqJLB" crossorigin="anonymous">
     <style>
         /* --- VARIABLES Y CONFIGURACIÓN GLOBAL --- */
         :root {
@@ -363,7 +364,8 @@
 
     <nav>
         <div class="logo">Sistema <span>HB</span></div>
-        <button id="btnCerrarSesion" class="btn-logout">Cerrar Sesión</button>
+        <button id="EditarPerfil" class="btn btn-warning" onclick="editarPefil()">Editar Perfil</button>
+        <button id="btnCerrarSesion" class="btn-logout" onclick="cerrarSesion()">Cerrar Sesión</button>
     </nav>
 
     <main>
@@ -402,58 +404,62 @@
                 </div>
             </div>
 
-            <!-- PANEL 2: TABLA DE PACIENTES CON SCROLLBAR -->
+            <!-- PANEL 2: SECCIÓN DE PACIENTES (MIS PACIENTES / AÑADIR PACIENTES) -->
             <div class="card">
-                <h3>Listado de Pacientes Asignados</h3>
-                <div class="table-wrapper">
-                    <table>
-                        <thead>
-                            <tr>
-                                <th>Paciente</th>
-                                <th style="text-align: center;">Último Análisis</th>
-                                <th style="text-align: center;">Estado Clínico</th>
-                            </tr>
-                        </thead>
-                        <tbody id="listaPacientes">
-                            <!-- Filas de muestra con efectos Hover y estructura de Avatares -->
-                            <tr title="Pasar el mouse para ver opciones de Juan Pérez">
-                                <td>
-                                    <div class="patient-cell">
-                                        <div class="avatar" style="background-color: var(--color-anemia);">J</div>
-                                        <span>Juan Pérez</span>
-                                    </div>
-                                </td>
-                                <td style="text-align: center;" class="hb-value">13.8 g/dL</td>
-                                <td style="text-align: center;">
-                                    <span class="badge badge-anemia">Anemia</span>
-                                </td>
-                            </tr>
-                            <tr title="Pasar el mouse para ver opciones de María Gómez">
-                                <td>
-                                    <div class="patient-cell">
-                                        <div class="avatar" style="background-color: var(--color-normal);">M</div>
-                                        <span>María Gómez</span>
-                                    </div>
-                                </td>
-                                <td style="text-align: center;" class="hb-value">13.5 g/dL</td>
-                                <td style="text-align: center;">
-                                    <span class="badge badge-normal">Normal</span>
-                                </td>
-                            </tr>
-                            <tr title="Pasar el mouse para ver opciones de Carlos Roca">
-                                <td>
-                                    <div class="patient-cell">
-                                        <div class="avatar" style="background-color: var(--color-anemia);">C</div>
-                                        <span>Carlos Roca</span>
-                                    </div>
-                                </td>
-                                <td style="text-align: center;" class="hb-value">12.1 g/dL</td>
-                                <td style="text-align: center;">
-                                    <span class="badge badge-anemia">Anemia</span>
-                                </td>
-                            </tr>
-                        </tbody>
-                    </table>
+                <!-- PESTAÑAS DE NAVEGACIÓN -->
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; flex-wrap: wrap; gap: 10px; border-bottom: 2px solid #f1f5f9; padding-bottom: 10px;">
+                    <div style="display: flex; gap: 15px;">
+                        <button id="tabMisPacientes" class="tab-btn active" style="font-weight: 600; font-size: 15px; background: none; border: none; padding: 5px 10px; cursor: pointer; color: #1e293b; border-bottom: 2px solid #818cf8; margin-bottom: -12px;" onclick="cambiarPestana('mis-pacientes')">
+                            Mis Pacientes
+                        </button>
+                        <button id="tabAnadirPacientes" class="tab-btn" style="font-weight: 500; font-size: 15px; background: none; border: none; padding: 5px 10px; cursor: pointer; color: #64748b; margin-bottom: -12px;" onclick="cambiarPestana('anadir-pacientes')">
+                            Añadir Pacientes
+                        </button>
+                    </div>
+
+                    <!-- FILTRO DE BÚSQUEDA INTEGRADO -->
+                    <div class="search-box" style="position: relative;">
+                        <input type="text" id="txtBuscarPaciente" placeholder="Buscar paciente por nombre..." 
+                               style="padding: 6px 12px; font-size: 13px; border: 1px solid #cbd5e1; border-radius: 6px; width: 220px; outline: none; transition: border 0.2s;"
+                               onfocus="this.style.borderColor='#818cf8'" onblur="this.style.borderColor='#cbd5e1'" oninput="filtrarPacientes()">
+                    </div>
+                </div>
+
+                <!-- CONTENIDO 1: MIS PACIENTES ASIGNADOS -->
+                <div id="vistaMisPacientes" class="tab-content">
+                    <div class="table-wrapper">
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th>Paciente</th>
+                                    <th style="text-align: center;">Último Análisis</th>
+                                    <th style="text-align: center;">Tipo de Sangre</th>
+                                     <th style="text-align: center;">Acción</th>
+                                </tr>
+                            </thead>
+                            <tbody id="listaPacientes">
+                                <!-- Se genera dinámicamente desde medicos.js -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <!-- CONTENIDO 2: AÑADIR NUEVOS PACIENTES -->
+                <div id="vistaAnadirPacientes" class="tab-content" style="display: none;">
+                    <div class="table-wrapper">
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th>Paciente</th>
+                                    <th style="text-align: center;">Tipo de Sangre</th>
+                                    <th style="text-align: center;">Acción</th>
+                                </tr>
+                            </thead>
+                            <tbody id="listaPacientesGlobales">
+                                <!-- Se genera dinámicamente desde la función cargarPacientes() -->
+                            </tbody>
+                        </table>
+                    </div>
                 </div>
             </div>
 
@@ -463,6 +469,4 @@
     <script src="../public/js/config.js"></script>
     <script src="../public/js/medicos.js"></script>
 </body>
-
-
 </html>
