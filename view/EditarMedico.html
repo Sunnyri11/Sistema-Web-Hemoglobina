@@ -7,128 +7,9 @@
     <title>Editar Médico</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.8/dist/css/bootstrap.min.css" rel="stylesheet"
         integrity="sha384-sRIl4kxILFvY47J16cr9ZwB07vP4J8+LH7qKQnuqkuIAvNWLzeN8tE5YBujZqJLB" crossorigin="anonymous">
-    <style>
-        * {
-            box-sizing: border-box;
-            margin: 0;
-            padding: 0;
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-        }
-
-        body {
-            background-color: #f3f0f7;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            min-height: 100vh;
-            padding: 20px 0;
-        }
-
-        .card {
-            background: #ffffff;
-            width: 100%;
-            max-width: 520px;
-            padding: 32px 28px;
-            border-radius: 16px;
-            box-shadow: 0 10px 25px rgba(92, 59, 143, 0.08);
-        }
-
-        .header-title {
-            text-align: center;
-            margin-bottom: 24px;
-        }
-
-        .header-title h1 {
-            font-size: 24px;
-            color: #242424;
-            font-weight: 700;
-        }
-
-        .header-title p {
-            font-size: 14px;
-            color: #6d647a;
-            margin-top: 4px;
-        }
-
-        .form-group {
-            margin-bottom: 16px;
-        }
-
-        label {
-            display: block;
-            font-size: 13px;
-            font-weight: 600;
-            color: #433d4e;
-            margin-bottom: 6px;
-        }
-
-        input[type="text"],
-        input[type="email"],
-        input[type="password"],
-        input[type="date"],
-        input[type="number"],
-        select {
-            width: 100%;
-            padding: 10px 14px;
-            border: 1.5px solid #dcd3e6;
-            border-radius: 8px;
-            font-size: 14px;
-            color: #333;
-            background-color: #fff;
-            transition: border-color 0.2s;
-        }
-
-        input:focus,
-        select:focus {
-            outline: none;
-            border-color: #674fa3;
-        }
-
-        .row-2 {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 12px;
-        }
-
-        .radio-group {
-            display: flex;
-            gap: 20px;
-            margin-top: 4px;
-        }
-
-        .radio-option {
-            display: flex;
-            align-items: center;
-            gap: 6px;
-            font-size: 14px;
-            color: #333;
-            cursor: pointer;
-        }
-
-        .btn-submit {
-            width: 100%;
-            background-color: #674fa3;
-            color: #ffffff;
-            border: none;
-            padding: 13px;
-            border-radius: 8px;
-            font-size: 15px;
-            font-weight: 600;
-            cursor: pointer;
-            margin-top: 10px;
-            transition: background-color 0.2s;
-        }
-
-        .btn-submit:hover {
-            background-color: #553e8a;
-        }
-
-        .helper-text {
-            font-size: 11px;
-            color: #7b7485;
-            margin-top: 4px;
-        }
-    </style>
+    
+    <!-- CSS Personalizado para Editar Médico -->
+    <link rel="stylesheet" href="../public/css/editarmedico.css">
 </head>
 
 <body>
@@ -234,14 +115,11 @@
                 </select>
             </div>
 
-
-            <!-- CORREGIDO: Texto adaptado para edición -->
             <button type="submit" class="btn-submit">Guardar Cambios</button>
         </form>
         <hr>
         <a class="btn btn-primary" href="Pagina_Medicos.html">Volver al Panel</a>
     </div>
-
 
     <script src="../public/js/config.js"></script>
     <script src="../public/js/editarmedico.js"></script>
@@ -253,7 +131,6 @@
                 const respuesta = await fetch(`${API_URL}geografia/departamentos`);
                 if (respuesta.ok) {
                     const departamentos = await respuesta.json();
-                    console.log(departamentos);
                     selectDepto.innerHTML = '<option value="" disabled selected>Seleccione departamento</option>';
                     departamentos.forEach(d => {
                         let option = document.createElement('option');
@@ -296,7 +173,6 @@
         }
 
         function Selector() {
-
             const selectRol = document.getElementById("rol");
             if (selectRol) {
                 selectRol.value = "Paciente";
@@ -304,7 +180,6 @@
 
             const contenedorSangre = document.getElementById("contenedorTipoSangre");
             const selectSangre = document.getElementById("Tipo_Sangre");
-
 
             if (contenedorSangre) {
                 contenedorSangre.style.display = "block";
@@ -314,14 +189,11 @@
                 selectSangre.setAttribute("required", "required");
             }
 
-
             const contenedorEsp = document.getElementById("contenedorEspecialidad");
             const selectEsp = document.getElementById("especialidad");
             if (contenedorEsp) contenedorEsp.style.display = "none";
             if (selectEsp) selectEsp.removeAttribute("required");
         }
-
-
 
         // 4. Asignar la altitud promedio calculada de la provincia seleccionada
         function actualizarAltitud() {
@@ -342,7 +214,6 @@
             e.preventDefault();
 
             const token = localStorage.getItem("token_seguridad");
-            // Usamos el ID 5 de tu URL de forma fija o desde el localStorage
             const idMedico = localStorage.getItem("usuario_id") || "5";
 
             const selectDepto = document.getElementById('departamento');
@@ -359,24 +230,20 @@
                 }
             }
 
-            // Forzamos el formato plano YYYY-MM-DD para la fecha de nacimiento
             let fechaRaw = document.getElementById('fecha_nacimiento').value;
             if (fechaRaw && fechaRaw.includes("/")) {
                 const partes = fechaRaw.split("/");
                 if (partes.length === 3) {
-                    fechaRaw = `${partes[2]}-${partes[1]}-${partes[0]}`; // Convierte de DD/MM/YYYY a YYYY-MM-DD
+                    fechaRaw = `${partes[2]}-${partes[1]}-${partes[0]}`;
                 }
             }
 
-            // Capturamos el género asegurando que viaje un ENTERO puro (1 o 2)
             const inputGenero = document.querySelector('input[name="genero"]:checked');
             const generoVal = inputGenero ? parseInt(inputGenero.value, 10) : 1;
 
-            // Capturamos la altitud asegurando un número flotante/double puro
             const altitudTxt = document.getElementById('altitud').value;
             const altitudVal = altitudTxt ? parseFloat(altitudTxt) : 0.0;
 
-            // CONSTRUCCIÓN DEL JSON CON NOMBRES EN PASCALCASE (Idéntico a tu EditPerfilDto en C#)
             const dataUsuario = {
                 IdUsuario: parseInt(idMedico, 10),
                 Nombre: document.getElementById('nombre').value || "",
@@ -394,8 +261,6 @@
                 IdEspecialidad: 0
             };
 
-            console.log("JSON final enviado al servidor:", JSON.stringify(dataUsuario));
-
             try {
                 const respuesta = await fetch(`${API_URL}Medico/editarmedico/${idMedico}`, {
                     method: "PUT",
@@ -406,10 +271,7 @@
                     body: JSON.stringify(dataUsuario)
                 });
 
-                // Leemos la respuesta como texto primero para inspeccionar el mensaje exacto de .NET
                 const textoRespuesta = await respuesta.text();
-                console.log("Respuesta cruda del servidor:", textoRespuesta);
-
                 let resultado = {};
                 try {
                     resultado = JSON.parse(textoRespuesta);
@@ -421,10 +283,6 @@
                     alert(resultado.mensaje || "Perfil actualizado correctamente.");
                     window.location.href = "Pagina_Medicos.html";
                 } else {
-                    // Si hay un BadRequest (400), aquí verás qué propiedad del DTO falló en la consola
-                    console.error("Detalle del error de validación (400):", resultado);
-
-                    // Si .NET devolvió el diccionario de errores estándar de validación
                     if (resultado.errors) {
                         let mensajesError = "Errores de validación:\n";
                         for (const campo in resultado.errors) {
@@ -440,10 +298,6 @@
                 console.error("Error de red:", error);
             }
         });
-
-
-
-
     </script>
 
 </body>

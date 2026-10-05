@@ -5,131 +5,11 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Sistema de Análisis - Ingreso y Registro</title>
+  
   <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.8/dist/css/bootstrap.min.css" rel="stylesheet"
     integrity="sha384-sRIl4kxILFvY47J16cr9ZwB07vP4J8+LH7qKQnuqkuIAvNWLzeN8tE5YBujZqJLB" crossorigin="anonymous">
-  <style>
-    body {
-      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-      background-color: #f3f4f6;
-      margin: 0;
-      padding: 20px;
-      display: flex;
-      justify-content: center;
-      align-items: center;
-      min-height: 100vh;
-      box-sizing: border-box;
-    }
-
-    .card {
-      background-color: #ffffff;
-      padding: 30px;
-      border-radius: 12px;
-      box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
-      width: 100%;
-      max-width: 400px;
-      box-sizing: border-box;
-    }
-
-    .header {
-      text-align: center;
-      margin-bottom: 24px;
-    }
-
-    .header h1 {
-      margin: 0;
-      font-size: 24px;
-      color: #1f2937;
-    }
-
-    .header p {
-      margin: 4px 0 0 0;
-      font-size: 14px;
-      color: #6b7280;
-    }
-
-    .form-group {
-      margin-bottom: 16px;
-    }
-
-    label {
-      display: block;
-      font-size: 13px;
-      font-weight: 500;
-      color: #374151;
-      margin-bottom: 6px;
-    }
-
-    input[type="email"],
-    input[type="password"],
-    select {
-      width: 100%;
-      padding: 10px 12px;
-      border: 1px solid #d1d5db;
-      border-radius: 8px;
-      font-size: 14px;
-      background-color: #ffffff;
-      box-sizing: border-box;
-      outline: none;
-      transition: border-color 0.2s, box-shadow 0.2s;
-    }
-
-    input:focus,
-    select:focus {
-      border-color: #7c3aed;
-      box-shadow: 0 0 0 3px rgba(124, 58, 237, 0.15);
-    }
-
-    .divider {
-      border-top: 1px solid #e5e7eb;
-      margin: 20px 0;
-      padding-top: 16px;
-    }
-
-    .divider-title {
-      font-size: 11px;
-      font-weight: 600;
-      color: #7c3aed;
-      text-transform: uppercase;
-      letter-spacing: 0.5px;
-      margin-bottom: 16px;
-    }
-
-    .btn-primary {
-      width: 100%;
-      background-color: #7c3aed;
-      color: #ffffff;
-      border: none;
-      padding: 12px;
-      font-size: 16px;
-      font-weight: 500;
-      border-radius: 8px;
-      cursor: pointer;
-      transition: background-color 0.2s;
-      margin-bottom: 10px;
-    }
-
-    .btn-primary:hover {
-      background-color: #6d28d9;
-    }
-
-    .btn-secondary {
-      width: 100%;
-      background-color: #ffffff;
-      color: #7c3aed;
-      border: 1px solid #ddd6fe;
-      padding: 12px;
-      font-size: 14px;
-      font-weight: 500;
-      border-radius: 8px;
-      cursor: pointer;
-      transition: background-color 0.2s;
-      text-transform: uppercase;
-    }
-
-    .btn-secondary:hover {
-      background-color: #f9fafb;
-    }
-  </style>
+  
+  <link rel="stylesheet" href="public/css/login.css">
 </head>
 
 <body>
@@ -175,55 +55,56 @@
       Registrar nuevo paciente
     </a>
   </div>
-<script src="public/js/config.js"></script>
-<script>
-  document.getElementById("formSistema").addEventListener("submit", async function (e) {
-    e.preventDefault();
 
-    const email = document.getElementById("correo").value;
-    const password = document.getElementById("password").value;
-    const rol = document.getElementById("rol").value;
+  <script src="public/js/config.js"></script>
+  <script>
+    document.getElementById("formSistema").addEventListener("submit", async function (e) {
+      e.preventDefault();
 
-    try {
-      const respuesta = await fetch(`${API_URL}Autenticacion/login`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json"
-        },
-        body: JSON.stringify({ 
-          email: email, 
-          password: password, 
-          rol: rol 
-        })
-      });
+      const email = document.getElementById("correo").value;
+      const password = document.getElementById("password").value;
+      const rol = document.getElementById("rol").value;
 
-      const datos = await respuesta.json();
+      try {
+        const respuesta = await fetch(`${API_URL}Autenticacion/login`, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json"
+          },
+          body: JSON.stringify({ 
+            email: email, 
+            password: password, 
+            rol: rol 
+          })
+        });
 
-      if (respuesta.ok) {
-        alert("Inicio de sesión exitoso. ¡Bienvenido " + (datos.nombre || "") + "!");
-        
-        // Guardar datos en localStorage
-        localStorage.setItem("token_seguridad", datos.token);
-        localStorage.setItem("usuario_id", datos.idEntidad);
+        const datos = await respuesta.json();
 
-        // Redirección basada en el rol que devuelve la API
-        if (datos.rol === "Paciente") {
-          window.location.href = "view/Monitoreo.html";
-        } else if (datos.rol === "Medico") {
-          window.location.href = "view/Pagina_Medicos.html";
-        } else if (datos.rol === "Administrador") {
-          window.location.href = "view/Pagina_Administrador.html";
+        if (respuesta.ok) {
+          alert("Inicio de sesión exitoso. ¡Bienvenido " + (datos.nombre || "") + "!");
+          
+          // Guardar datos en localStorage
+          localStorage.setItem("token_seguridad", datos.token);
+          localStorage.setItem("usuario_id", datos.idEntidad);
+
+          // Redirección basada en el rol que devuelve la API
+          if (datos.rol === "Paciente") {
+            window.location.href = "view/Monitoreo.html";
+          } else if (datos.rol === "Medico") {
+            window.location.href = "view/Pagina_Medicos.html";
+          } else if (datos.rol === "Administrador") {
+            window.location.href = "view/Pagina_Administrador.html";
+          }
+        } else {
+          alert(datos.mensaje || "Error 400: Datos incorrectos o formato inválido.");
+          console.error("Detalle del error 400:", datos);
         }
-      } else {
-        alert(datos.mensaje || "Error 400: Datos incorrectos o formato inválido.");
-        console.error("Detalle del error 400:", datos);
+      } catch (error) {
+        console.error(error);
+        alert("No se pudo conectar con el servidor de la API.");
       }
-    } catch (error) {
-      console.error(error);
-      alert("No se pudo conectar con el servidor de la API.");
-    }
-  });
-</script>
+    });
+  </script>
 
 </body>
 
