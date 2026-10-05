@@ -62,7 +62,7 @@
         </div>
 
         <div class="form-group">
-          <label for="provincia">Provincia</label>
+          <label for="provincia">Ciudad</label>
           <select id="provincia" name="provincia" onchange="actualizarAltitud()" required>
             <option value="" disabled selected>Seleccione depto primero</option>
           </select>
@@ -133,6 +133,7 @@
   </div>
   <script src="../public/js/config.js"></script>
   <script>
+    var idciudade = 0;
     // 1. Cargar Departamentos automáticamente desde MySQL al abrir la página
     document.addEventListener("DOMContentLoaded", async () => {
       const selectDepto = document.getElementById('departamento');
@@ -185,11 +186,11 @@
     // 3. Evaluar Rol de manera dinámica
     async function Selector() {
       const rolSeleccionado = document.getElementById("rol").value;
-      
+
       // Selectores de Especialidad
       const contenedorEsp = document.getElementById("contenedorEspecialidad");
       const selectEsp = document.getElementById("especialidad");
-      
+
       // Selectores de Tipo de Sangre
       const contenedorSangre = document.getElementById("contenedorTipoSangre");
       const selectSangre = document.getElementById("Tipo_Sangre");
@@ -233,7 +234,8 @@
       const selectProvincia = document.getElementById('provincia');
       const optionSeleccionada = selectProvincia.options[selectProvincia.selectedIndex];
       const inputAltitud = document.getElementById('altitud');
-
+      idciudade = optionSeleccionada.value;
+      console.log(idciudade);
       if (optionSeleccionada && optionSeleccionada.value) {
         const altitud = optionSeleccionada.getAttribute('data-altitud');
         inputAltitud.value = altitud || 0;
@@ -246,27 +248,45 @@
     document.getElementById('formRegistro').addEventListener('submit', async function (e) {
       e.preventDefault();
 
+      // 1. Declaración e inicialización correcta de los elementos del DOM
       const selectDepto = document.getElementById('departamento');
       const selectProv = document.getElementById('provincia');
       const selectEsp = document.getElementById('especialidad');
       const rolSeleccionado = document.getElementById('rol').value;
 
+      // Validación preventiva: Asegurar que la fecha esté seleccionada
+      const inputFecha = document.getElementById('fecha_nacimiento').value;
+      if (!inputFecha) {
+        alert("Por favor, ingrese una fecha de nacimiento válida.");
+        return;
+      }
+
+      // 2. Extraer de forma segura los textos seleccionados de los selectores HTML
+      const departamentoTexto = selectDepto && selectDepto.selectedIndex !== -1 ? selectDepto.options[selectDepto.selectedIndex].text : "";
+      const departamentoId = selectDepto && selectDepto.value ? parseInt(selectDepto.value) : 0;
+      const provinciaTexto = selectProv && selectProv.selectedIndex !== -1 ? selectProv.options[selectProv.selectedIndex].text : "";
+
+      // 3. Estructuración del objeto con los nombres exactos exigidos por REGISTROFORMCLS en C#
       const dataUsuario = {
-        nombre: document.getElementById('nombre').value,
-        apellidoPaterno: document.getElementById('apellido_paterno').value,
-        apellidoMaterno: document.getElementById('apellido_materno').value,
-        genero: document.querySelector('input[name="genero"]:checked').value,
-        fechaNacimiento: document.getElementById('fecha_nacimiento').value,
-        departamento: selectDepto.options[selectDepto.selectedIndex].text,
-        provincia: selectProv.options[selectProv.selectedIndex].text,
-        altitud: parseFloat(document.getElementById('altitud').value),
-        correo: document.getElementById('correo').value,
+        nombre: document.getElementById('nombre').value.trim(),
+        apellidoPaterno: document.getElementById('apellido_paterno').value.trim(),
+        apellidoMaterno: document.getElementById('apellido_materno').value.trim(),
+        genero: document.querySelector('input[name="genero"]:checked')?.value || "",
+        fechaNacimiento: inputFecha,
+
+        // Atributos de ubicación requeridos por tu clase C#
+        departamento: departamentoTexto,
+        idDepartamento: departamentoId,
+        provincia: provinciaTexto,
+        altitud: document.getElementById('altitud') ? parseFloat(document.getElementById('altitud').value) : 3600, // Valor por defecto o dinámico
+
+        correo: document.getElementById('correo').value.trim(),
         password: document.getElementById('password').value,
         rol: rolSeleccionado,
 
+        // Campos específicos condicionales
         tipo_sangre: rolSeleccionado === "Paciente" ? document.getElementById("Tipo_Sangre").value : null,
-        // Si el rol es médico introduce el entero de la especialidad, sino manda un nulo plano
-        idEspecialidad: rolSeleccionado === "Medico" ? parseInt(selectEsp.value) : 0,
+        idEspecialidad: rolSeleccionado === "Medico" ? parseInt(selectEsp.value) : 0
       };
 
       try {
@@ -279,17 +299,20 @@
         });
 
         const resultado = await respuesta.json();
+
         if (respuesta.ok) {
-          alert(resultado.mensaje);
+          alert(resultado.mensaje || "Registro completado con éxito.");
           window.location.href = "../index.html";
         } else {
-          alert(resultado.mensaje || "Ocurrió un inconveniente al registrar.");
+          console.error("Errores detallados enviados por el servidor .NET:", resultado);
+          alert(resultado.mensaje || "Ocurrió un inconveniente al registrar. Revisa la consola para más detalles.");
         }
       } catch (error) {
         alert("No se pudo conectar con el servidor de la API.");
-        console.error(error);
+        console.error("Error en la petición Fetch:", error);
       }
     });
+
   </script>
 
 </body>

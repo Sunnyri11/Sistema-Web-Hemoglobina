@@ -7,7 +7,7 @@
     <title>Editar Médico</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.8/dist/css/bootstrap.min.css" rel="stylesheet"
         integrity="sha384-sRIl4kxILFvY47J16cr9ZwB07vP4J8+LH7qKQnuqkuIAvNWLzeN8tE5YBujZqJLB" crossorigin="anonymous">
-    
+
     <!-- CSS Personalizado para Editar Médico -->
     <link rel="stylesheet" href="../public/css/editarmedico.css">
 </head>
@@ -242,20 +242,26 @@
             const generoVal = inputGenero ? parseInt(inputGenero.value, 10) : 1;
 
             const altitudTxt = document.getElementById('altitud').value;
-            const altitudVal = altitudTxt ? parseFloat(altitudTxt) : 0.0;
+            const altitudVal = altitudTxt ? parseFloat(altitudTxt) : null;
+
+            // CORRECCIÓN: Obtener el ID numérico del select de la ciudad/departamento
+            const idCiudadValor = selectDepto && selectDepto.value ? parseInt(selectDepto.value, 10) : 0;
 
             const dataUsuario = {
                 IdUsuario: parseInt(idMedico, 10),
-                Nombre: document.getElementById('nombre').value || "",
-                ApellidoPaterno: document.getElementById('paterno').value || "",
-                ApellidoMaterno: document.getElementById('materno').value || "",
+                Nombre: document.getElementById('nombre').value.trim() || null,
+                ApellidoPaterno: document.getElementById('paterno').value.trim() || null,
+                ApellidoMaterno: document.getElementById('materno').value.trim() || null,
                 Genero: generoVal,
-                FechaNacimiento: fechaRaw || "",
-                Departamento: selectDepto && selectDepto.selectedIndex >= 0 ? selectDepto.options[selectDepto.selectedIndex].text : "",
-                Provincia: selectProv && selectProv.selectedIndex >= 0 ? selectProv.options[selectProv.selectedIndex].text : "",
+                FechaNacimiento: fechaRaw || null,
+
+                // CORRECCIÓN CLAVE: Enviamos el ID como entero en lugar del string de texto
+                IdCiudad: idCiudadValor,
+
+                Provincia: selectProv && selectProv.selectedIndex >= 0 ? selectProv.options[selectProv.selectedIndex].text : null,
                 Altitud: altitudVal,
-                Correo: document.getElementById('correo').value || "",
-                Password: document.getElementById('password').value.trim() || "",
+                Correo: document.getElementById('correo').value.trim() || null,
+                Password: document.getElementById('password').value.trim() || null,
                 Rol: esPacienteAdemas ? "Paciente" : "Medico",
                 Tipo_Sangre: tipoSangreValor,
                 IdEspecialidad: 0
@@ -298,6 +304,9 @@
                 console.error("Error de red:", error);
             }
         });
+
+
+
     </script>
 
 </body>

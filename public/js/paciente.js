@@ -102,21 +102,33 @@ async function cargarPaciente() {
             const paci = datospaciente.Persona || datospaciente.persona;
             const correo = datospaciente.Correo || datospaciente.correo;
             const tipoSangreObjeto = datospaciente.TipoSangre || datospaciente.tipoSangre;
-            
+
+            const hoy = new Date();
+            const fechin = new Date(datospaciente.fechaNacimiento.fechaDeNacimiento);
+            let edad = hoy.getFullYear() - fechin.getFullYear();
+            const diferenciaMeses = hoy.getMonth() - fechin.getMonth();
+            if (diferenciaMeses < 0 || (diferenciaMeses === 0 && hoy.getDate() < fechin.getDate())) 
+            {
+                edad--;
+            }
+ 
             // Buscamos el nombre de la columna real (tipoDeSangre o TipoDeSangre)
             const tipoSangreTexto = tipoSangreObjeto ? (tipoSangreObjeto.tipoDeSangre || tipoSangreObjeto.TipoDeSangre || "No registrado") : "No registrado";
             
             // CORREGIDO: Cambiado 'paci.apellidos' por 'paci.apellido' según el JSON de Wilder
             const nombrepacientecompleto = paci ? `${paci.Nombre || paci.nombre || ''} ${paci.Apellido || paci.apellido || ''}`.trim() : 'Paciente sin nombre';
             const correoTexto = correo ? (correo.CorreoElectronico || correo.correoElectronico || 'Sin correo') : 'Sin correo';
-
+            const departamento=datospaciente.departamento.departamento1;
+            const ciudad =datospaciente.ciudad.nombre;
             const infoDiv = document.getElementById("infoPaciente");
             if (infoDiv) {
                 infoDiv.innerHTML = `
                     <p><strong>Nombre:</strong> ${nombrepacientecompleto}</p>
                     <p><strong>Correo:</strong> ${correoTexto}</p>
+                    <p><strong>Edad:</strong> ${edad}</p>
+                    <p><strong>Departamento:</strong> ${departamento}</p>
+                    <p><strong>Ciudad:</strong> ${ciudad}</p>
                     <p><strong>Tipo de Sangre:</strong> ${tipoSangreTexto}</p>
-                    <p><strong>Rol:</strong> Paciente</p>
                     <div id="estadoPaciente" class="estado">Evaluando historial...</div>
                 `;
             }
@@ -172,66 +184,102 @@ function inicializarGrafico(etiquetas, valores) {
 // --- REQUISITO: GENERACIÓN DIRECTA DE REPORTE PDF ---
 // ========================================================
 function descargarReportePDF() {
-    if (historialPacienteEnMemoria.length === 0) {
+    if (!historialPacienteEnMemoria || historialPacienteEnMemoria.length === 0) {
         alert("No registras análisis clínicos en tu historial para generar el reporte.");
         return;
     }
 
-    const { jsPDF } = window.jspdf;
-    const doc = new jsPDF();
-
-    // Diseño institucional del encabezado del documento
-    doc.setFillColor(15, 23, 42);
-    doc.rect(0, 0, 220, 40, "F");
-
-    doc.setFont("helvetica", "bold");
-    doc.setFontSize(22);
-    doc.setTextColor(255, 255, 255);
-    doc.text("SISTEMA HB - REPORTE CLÍNICO", 15, 26);
-
-    // Información del Paciente
-    doc.setFontSize(11);
-    doc.setTextColor(51, 65, 85);
-    doc.setFont("helvetica", "normal");
-    doc.text(`Paciente: ${nombrePacienteEnMemoria}`, 15, 52);
-    doc.text(`Correo Electrónico: ${localStorage.getItem("usuario_correo") || 'Registrado en el sistema'}`, 15, 58);
-    doc.text(`Fecha de Emisión: ${new Date().toLocaleDateString()}`, 15, 64);
-    doc.text(`Total de Análisis Procesados: ${historialPacienteEnMemoria.length}`, 15, 70);
-
-    // Formatear filas de datos clínicos cronológicamente
-    const filasTabla = [];
+    // Formatear filas de datos clínicos cronológicamente (más reciente primero)
     const registrosOrdenTemporal = [...historialPacienteEnMemoria].reverse();
+    let filasHTML = "";
 
     registrosOrdenTemporal.forEach((r, idx) => {
         const valor = parseFloat(r.valorHemoglobina || r.ValorHemoglobina || 0);
+        
         let diagnostico = "Normal (Estable)";
-        if (valor < 12) diagnostico = "Alerta de Anemia";
-        else if (valor > 17) diagnostico = "Alerta de Poliglobulia";
+        let claseColor = "color: #27ae60;"; // Verde para estable
+        
+        if (valor < 12) {
+            diagnostico = "Alerta de Anemia";
+            claseColor = "color: #c0392b; font-weight: bold;"; // Rojo para alerta
+        } else if (valor > 17) {
+            diagnostico = "Alerta de Poliglobulia";
+            claseColor = "color: #d35400; font-weight: bold;"; // Naranja
+        }
 
-        filasTabla.push([
-            `Medición ${idx + 1}`,
-            r.fecha || r.Fecha || "Sin fecha",
-            `${valor.toFixed(2)} g/dL`,
-            diagnostico
-        ]);
+        filasHTML += `
+            <tr>
+                <td style="padding: 10px; border-bottom: 1px solid #e2e8f0; text-align: left;">Medición ${idx + 1}</td>
+                <td style="padding: 10px; border-bottom: 1px solid #e2e8f0; text-align: center;">${r.fecha || r.Fecha || "Sin fecha"}</td>
+                <td style="padding: 10px; border-bottom: 1px solid #e2e8f0; text-align: center;">${valor.toFixed(2)} g/dL</td>
+                <td style="padding: 10px; border-bottom: 1px solid #e2e8f0; text-align: center; ${claseColor}">${diagnostico}</td>
+            </tr>
+        `;
     });
 
+    // Crear una ventana temporal en el navegador para imprimir el diseño
+    const ventanaImpresion = window.open("", "_blank");
 
-    // Inyección de la tabla estructurada en el documento PDF
-    doc.autoTable({
-        startY: 78,
-        head: [['Secuencia', 'Fecha del Análisis', 'Nivel Hemoglobina', 'Evaluación Diagnóstica']],
-        body: filasTabla,
-        headStyles: { fillColor: '#2980b9', fontStyle: 'bold' },
-        styles: { font: 'helvetica', fontSize: 10, halign: 'center' },
-        columnStyles: { 0: { halign: 'left' }, 1: { halign: 'center' } }
-    });
+    // Construcción del documento con estilos CSS embebidos (Idéntico a tu diseño previo)
+    ventanaImpresion.document.write(`
+        <html>
+        <head>
+            <title>Reporte_Hemoglobina_${(nombrePacienteEnMemoria || 'Paciente').replace(/\s+/g, '_')}</title>
+            <style>
+                body { font-family: 'Helvetica', Arial, sans-serif; margin: 0; padding: 0; color: #334155; }
+                .header { background-color: #0f172a; color: white; padding: 25px 20px; }
+                .header h1 { margin: 0; font-size: 24px; font-weight: bold; }
+                .info-section { padding: 20px; font-size: 13px; line-height: 1.6; background-color: #f8fafc; border-bottom: 1px solid #e2e8f0; }
+                .info-section p { margin: 4px 0; }
+                .tabla-contenedor { padding: 20px; }
+                table { width: 100%; border-collapse: collapse; margin-top: 10px; font-size: 13px; }
+                th { background-color: #2980b9; color: white; padding: 12px 10px; font-weight: bold; text-align: center; }
+                @media print {
+                    body { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+                }
+            </style>
+        </head>
+        <body>
+            <div class="header">
+                <h1>SISTEMA HB - REPORTE CLÍNICO</h1>
+            </div>
+            
+            <div class="info-section">
+                <p><strong>Paciente:</strong> ${nombrePacienteEnMemoria || 'Paciente Anónimo'}</p>
+                <p><strong>Correo Electrónico:</strong> ${localStorage.getItem("usuario_correo") || 'Registrado en el sistema'}</p>
+                <p><strong>Fecha de Emisión:</strong> ${new Date().toLocaleDateString()}</p>
+                <p><strong>Total de Análisis Procesados:</strong> ${historialPacienteEnMemoria.length}</p>
+            </div>
 
-    // Guardar el archivo directamente en las descargas del dispositivo del usuario
-    const nombreArchivo = `Reporte_Hemoglobina_${nombrePacienteEnMemoria.replace(/\s+/g, '_')}.pdf`;
-    doc.save(nombreArchivo);
+            <div class="tabla-contenedor">
+                <table>
+                    <thead>
+                        <tr>
+                            <th style="text-align: left;">Secuencia</th>
+                            <th>Fecha del Análisis</th>
+                            <th>Nivel Hemoglobina</th>
+                            <th>Evaluación Diagnóstica</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        ${filasHTML}
+                    </tbody>
+                </table>
+            </div>
+
+            <script>
+                // Ejecuta la orden de guardado/impresión automáticamente al cargar el documento
+                window.onload = function() {
+                    window.print();
+                    setTimeout(function() { window.close(); }, 500);
+                };
+            <\/script>
+        </body>
+        </html>
+    `);
+
+    ventanaImpresion.document.close();
 }
-
 
 
 // ========================================================

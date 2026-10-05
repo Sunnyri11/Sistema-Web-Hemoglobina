@@ -96,16 +96,22 @@ async function cargarPacientes() {
 
             // Obtenemos el ID del paciente cuidando las mayúsculas/minúsculas que envía tu C#
             const idPaciente = p.idPaciente || p.IdPaciente;
-
+            const ciudad = p.departamento.departamento1 + " / " +p.ciudad.nombre;
             return `
         <tr>
             <td><strong>${nombreCompleto}</strong></td>
             <td style="text-align: center;">
-                <!-- CORREGIDO: Añadimos clases de Bootstrap para darle color de fondo gris claro (bg-light) y texto oscuro (text-dark) -->
                 <span class="badge bg-light text-dark border" style="font-size: 0.9rem; padding: 5px 10px;">
                     ${tipoSangre}
                 </span>
             </td>
+
+            <td style="text-align: center;">
+                <span class="badge bg-light text-dark border" style="font-size: 0.9rem; padding: 5px 10px;">
+                    ${ciudad}
+                </span>
+            </td>
+
             <td style="text-align: center;">
                 <button class="btn btn-info btn-sm text-white" onclick="asociarNuevoPaciente(${idPaciente})">
                     ➕ Añadir
@@ -241,7 +247,7 @@ async function cargarDashboardMedico() {
                 const hbValor = p.tipoSangre ? p.tipoSangre : "Sin registros";
                 const nombreCompleto = `${p.nombre} ${p.apellido}`;
                 const letraInicial = nombreCompleto.charAt(0).toUpperCase();
-                
+                const ciudad =p.departamento.departamento1+" / "+p.ciudad.nombre;
                 // CORREGIDO: Aseguramos el ID correcto que viene del objeto de la iteración
                 const idPacienteActual = p.idUsuario || p.idPaciente || p.IdPaciente;
 
@@ -258,6 +264,7 @@ async function cargarDashboardMedico() {
                         </div>
                     </td>
                     <td style="text-align: center;" class="hb-value">${hbValor}</td>
+                    <td style="text-align: center;" class="hb-value">${ciudad}</td>
                     <td style="text-align: center;"><span class="badge ${badgeEstilo}">${estado}</span></td>
                     <td style="text-align: center;">
                         <button class="btn btn-danger btn-sm text-white" onclick="eliminarPacienteRelacion(${idPacienteActual}, '${nombreCompleto}')">
