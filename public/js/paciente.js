@@ -327,14 +327,13 @@ function iniciarVinculacionManual() {
     }, 3000);
 }
 
+
 function escucharCambiosFirebase(sensorId) {
     const mensaje = document.getElementById("modalMensaje");
     const loaderTexto = document.getElementById("loaderTexto");
 
     // Construcción de la URL REST real hacia tu base de datos de Firebase
-    const firebaseNodoUrl = `${FIREBASE_URL}analisis_temporal.json?nocache=${Date.now()}`;
-
-    mensaje.innerText = "Esperando que el hardware envíe la telemetría biométrica...";
+    const firebaseNodoUrl = `${FIREBASE_URL}usuario_fabri/lectura_actual.json?nocache=${Date.now()}`;
 
     // Configurar bucle de consulta activa (Polling) cada 2 segundos a Firebase
     const vigilanteIntervalo = setInterval(async () => {
@@ -343,9 +342,9 @@ function escucharCambiosFirebase(sensorId) {
 
             if (respuestaFirebase.ok) {
                 const datosHardwareReal = await respuestaFirebase.json();
-
-                // EVALUACIÓN DATOS REALES: Validar que el nodo contenga información y empareje con el ID ingresado
-                if (datosHardwareReal && datosHardwareReal.sensor_id === sensorId) {
+                console.log("lsamdlma")
+                // EVALUACIÓN DATOS REALES: Validamos que el nodo contenga el estado "Exito" que envía tu ESP32
+                if (datosHardwareReal && datosHardwareReal.mensaje === "Exito") {
 
                     // Detener la escucha activa de red de inmediato al capturar el evento
                     clearInterval(vigilanteIntervalo);
@@ -353,13 +352,14 @@ function escucharCambiosFirebase(sensorId) {
                     // REQUISITO EXACTO 2: Mensaje de análisis finalizado
                     loaderTexto.innerText = "Analisis terminado";
 
-                    // Mapear de manera estricta las propiedades de tu JSON real de Firebase
+                    // Mapear adaptando las propiedades del JSON real de tu ESP32 al formato temporal de tu app
                     datosMedicionTemporal = {
-                        valor_hemoglobina: parseFloat(datosHardwareReal.valor_hemoglobina),
-                        temperatura: parseFloat(datosHardwareReal.temperatura),
-                        sensor_id: datosHardwareReal.sensor_id,
-                        timestamp: datosHardwareReal.timestamp
+                        valor_hemoglobina: parseFloat(datosHardwareReal.hemoglobina), // Accede a "hemoglobina" de tu ESP32
+                        temperatura: parseFloat(datosHardwareReal.temperatura),       // Accede a "temperatura" de tu ESP32
+                        sensor_id: sensorId,                                          // Asigna el ID ingresado manualmente
+                        timestamp: datosHardwareReal.timestamp || Math.floor(Date.now() / 1000) // Fallback si no viene timestamp del hardware
                     };
+                    console.log(datosMedicionTemporal);
 
                     // Pintar los valores REALES capturados de la nube dentro de la interfaz del modal
                     mensaje.innerHTML = `
@@ -383,8 +383,8 @@ function escucharCambiosFirebase(sensorId) {
 
     // Cancelar la búsqueda de forma segura a los 60 segundos si el hardware no responde
     setTimeout(() => {
-        if (!datosMedicionTemporal && vigilanteIntervalo) {
-            clearInterval(vigilanteIntervalo);
+        if (typeof datosMedicionTemporal === 'undefined' || !datosMedicionTemporal) {
+            if (vigilanteIntervalo) clearInterval(vigilanteIntervalo);
             document.getElementById("iconoCarga").style.display = "none";
             loaderTexto.innerText = "Tiempo agotado";
             mensaje.innerText = "No se detectó el envío de datos desde el sensor. Inténtelo de nuevo.";
