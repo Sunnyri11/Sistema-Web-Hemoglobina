@@ -115,8 +115,8 @@ async function cargarPaciente() {
             // Buscamos el nombre de la columna real (tipoDeSangre o TipoDeSangre)
             const tipoSangreTexto = tipoSangreObjeto ? (tipoSangreObjeto.tipoDeSangre || tipoSangreObjeto.TipoDeSangre || "No registrado") : "No registrado";
             
-            // CORREGIDO: Cambiado 'paci.apellidos' por 'paci.apellido' según el JSON de Wilder
-            const nombrepacientecompleto = paci ? `${paci.Nombre || paci.nombre || ''} ${paci.Apellido || paci.apellido || ''}`.trim() : 'Paciente sin nombre';
+            console.log("Mi paciente: " + paci);
+            const nombrepacientecompleto = paci ? `${paci.Nombre || paci.nombre || ''} ${paci.Paterno || paci.paterno || ''} ${paci.Materno || paci.materno || ''}`.trim() : 'Paciente sin nombre';
             const correoTexto = correo ? (correo.CorreoElectronico || correo.correoElectronico || 'Sin correo') : 'Sin correo';
             const departamento=datospaciente.departamento.departamento1;
             const ciudad =datospaciente.ciudad.nombre;
@@ -153,6 +153,7 @@ function actualizarEstadoClinico(ultimaHemoglobina) {
         estadoDiv.className = "estado estable";
     }
 }
+
 
 // ============================================================================
 // LIBRERÍA GRÁFICA INTEGRADA (0% Internet - Inmune a bloqueos)
@@ -280,8 +281,6 @@ function descargarReportePDF() {
 
     ventanaImpresion.document.close();
 }
-
-
 // ========================================================
 // --- TELEMETRÍA REAL EN VIVO DESDE LA NUBE DE FIREBASE ---
 // ========================================================
@@ -299,59 +298,59 @@ function cerrarModalAnalisis() {
     document.getElementById("modalAnalisis").classList.remove("active");
     datosMedicionTemporal = null;
 }
-
 function iniciarVinculacionManual() {
     const sensorId = document.getElementById("txtSensorId").value.trim();
     if (!sensorId) {
         alert("Por favor, ingrese un código identificador válido.");
         return;
     }
-
+ 
     document.getElementById("inputSection").style.display = "none";
     const loader = document.getElementById("loaderSection");
     const titulo = document.getElementById("modalTitulo");
     const mensaje = document.getElementById("modalMensaje");
     const loaderTexto = document.getElementById("loaderTexto");
-
+ 
     loader.style.display = "flex";
     document.getElementById("iconoCarga").style.display = "block";
     titulo.innerText = "Estableciendo Enlace";
     mensaje.innerText = `Buscando canal activo para el sensor: ${sensorId}...`;
-
+ 
     setTimeout(() => {
         // REQUISITO EXACTO 1: Mensaje de vinculación exitosa
         loaderTexto.innerText = "Vinculación completa, porfavor utilice el dispositivo";
         mensaje.innerText = "Sincronización establecida. Realice la toma física de la muestra con el lector de hardware.";
-
+ 
         escucharCambiosFirebase(sensorId);
     }, 3000);
 }
-
-
+ 
 function escucharCambiosFirebase(sensorId) {
     const mensaje = document.getElementById("modalMensaje");
     const loaderTexto = document.getElementById("loaderTexto");
-
-    // Construcción de la URL REST real hacia tu base de datos de Firebase
-    const firebaseNodoUrl = `${FIREBASE_URL}usuario_fabri/lectura_actual.json?nocache=${Date.now()}`;
-
+ 
+    // 1. MODIFICADO: Ahora apunta dinámicamente al nodo de la MAC (sensorId)
+    // Se remueven posibles dos puntos ':' por si el usuario los digita
+    const macLimpia = sensorId.replace(/:/g, "");
+    const firebaseNodoUrl = `${FIREBASE_URL}dispositivos_activos/${macLimpia}.json?nocache=${Date.now()}`;
+ 
     // Configurar bucle de consulta activa (Polling) cada 2 segundos a Firebase
     const vigilanteIntervalo = setInterval(async () => {
         try {
             const respuestaFirebase = await fetch(firebaseNodoUrl, { method: "GET" });
-
+ 
             if (respuestaFirebase.ok) {
                 const datosHardwareReal = await respuestaFirebase.json();
                 console.log("lsamdlma")
                 // EVALUACIÓN DATOS REALES: Validamos que el nodo contenga el estado "Exito" que envía tu ESP32
                 if (datosHardwareReal && datosHardwareReal.mensaje === "Exito") {
-
+ 
                     // Detener la escucha activa de red de inmediato al capturar el evento
                     clearInterval(vigilanteIntervalo);
-
+ 
                     // REQUISITO EXACTO 2: Mensaje de análisis finalizado
                     loaderTexto.innerText = "Analisis terminado";
-
+ 
                     // Mapear adaptando las propiedades del JSON real de tu ESP32 al formato temporal de tu app
                     datosMedicionTemporal = {
                         valor_hemoglobina: parseFloat(datosHardwareReal.hemoglobina), // Accede a "hemoglobina" de tu ESP32
@@ -360,17 +359,25 @@ function escucharCambiosFirebase(sensorId) {
                         timestamp: datosHardwareReal.timestamp || Math.floor(Date.now() / 1000) // Fallback si no viene timestamp del hardware
                     };
                     console.log(datosMedicionTemporal);
-
+ 
+                    // 2. MODIFICADO: Petición DELETE para eliminar el nodo de la MAC de inmediato y dejarlo limpio
+                    try {
+                        await fetch(firebaseNodoUrl, { method: "DELETE" });
+                        console.log(`Nodo Firebase de la MAC ${macLimpia} eliminado correctamente.`);
+                    } catch (errorDelete) {
+                        console.error("Error al intentar limpiar el nodo en Firebase:", errorDelete);
+                    }
+ 
                     // Pintar los valores REALES capturados de la nube dentro de la interfaz del modal
                     mensaje.innerHTML = `
-                        <div style="text-align: left; background: #f8fafc; padding: 14px; border-radius: 10px; border: 1px solid #e2e8f0; margin-top: 10px;">
-                            <p style="margin: 4px 0;"><strong>📡 Sensor validado:</strong> ${datosMedicionTemporal.sensor_id}</p>
-                            <p style="margin: 4px 0; color: #2563eb;"><strong>🩸 Hemoglobina capturada:</strong> ${datosMedicionTemporal.valor_hemoglobina.toFixed(2)} g/dL</p>
-                            <p style="margin: 4px 0; color: #ef4444;"><strong>🌡️ Temperatura corporal:</strong> ${datosMedicionTemporal.temperatura.toFixed(1)} °C</p>
-                        </div>
-                        <p style="margin-top: 15px; font-weight: 600; color: var(--text-main);">Confirme la veracidad de la muestra para guardar de manera definitiva.</p>
+<div style="text-align: left; background: #f8fafc; padding: 14px; border-radius: 10px; border: 1px solid #e2e8f0; margin-top: 10px;">
+<p style="margin: 4px 0;"><strong>📡 Sensor validado:</strong> ${datosMedicionTemporal.sensor_id}</p>
+<p style="margin: 4px 0; color: #2563eb;"><strong>🩸 Hemoglobina capturada:</strong> ${datosMedicionTemporal.valor_hemoglobina.toFixed(2)} g/dL</p>
+<p style="margin: 4px 0; color: #ef4444;"><strong>🌡️ Temperatura corporal:</strong> ${datosMedicionTemporal.temperatura.toFixed(1)} °C</p>
+</div>
+<p style="margin-top: 15px; font-weight: 600; color: var(--text-main);">Confirme la veracidad de la muestra para guardar de manera definitiva.</p>
                     `;
-
+ 
                     // Habilitar el paso de confirmación manual explícito para evitar fallas
                     document.getElementById("iconoCarga").style.display = "none";
                     document.getElementById("btnGuardarSQL").style.display = "block";
@@ -380,7 +387,7 @@ function escucharCambiosFirebase(sensorId) {
             console.error("Falla de comunicación con el REST de Firebase:", error);
         }
     }, 2000);
-
+ 
     // Cancelar la búsqueda de forma segura a los 60 segundos si el hardware no responde
     setTimeout(() => {
         if (typeof datosMedicionTemporal === 'undefined' || !datosMedicionTemporal) {
@@ -390,6 +397,55 @@ function escucharCambiosFirebase(sensorId) {
             mensaje.innerText = "No se detectó el envío de datos desde el sensor. Inténtelo de nuevo.";
         }
     }, 60000);
+}
+
+ 
+async function iniciarVinculacionManual() {
+    const sensorId = document.getElementById("txtSensorId").value.trim();
+    if (!sensorId) {
+        alert("Por favor, ingrese un código identificador válido.");
+        return;
+    }
+ 
+    // 1. RESTRICCIÓN: Construir la URL de verificación para ver si el nodo ya existe
+    const macLimpia = sensorId.replace(/:/g, "");
+    const urlVerificacion = `${FIREBASE_URL}dispositivos_activos/${macLimpia}.json?nocache=${Date.now()}`;
+ 
+    try {
+        // Hacemos una consulta rápida de lectura
+        const verificarNodo = await fetch(urlVerificacion, { method: "GET" });
+        if (verificarNodo.ok) {
+            const datosExistentes = await verificarNodo.json();
+            // Si el nodo NO es null, significa que ya hay una medición activa de alguien más
+            if (datosExistentes !== null) {
+                alert("⚠️ El dispositivo sensor ya se encuentra en uso por otro usuario. Por favor, espere a que termine o intente con otra MAC.");
+                return; // 🛑 Detiene la función por completo y no permite enlazar
+            }
+        }
+    } catch (error) {
+        console.error("Error al verificar la disponibilidad del sensor:", error);
+        alert("Hubo un error de conexión al verificar el estado del dispositivo.");
+        return;
+    }
+ 
+    // 2. FLUJO NORMAL: Si pasó la verificación (el nodo está vacío/null), procedemos con el diseño y la escucha
+    document.getElementById("inputSection").style.display = "none";
+    const loader = document.getElementById("loaderSection");
+    const titulo = document.getElementById("modalTitulo");
+    const mensaje = document.getElementById("modalMensaje");
+    const loaderTexto = document.getElementById("loaderTexto");
+ 
+    loader.style.display = "flex";
+    document.getElementById("iconoCarga").style.display = "block";
+    titulo.innerText = "Estableciendo Enlace";
+    mensaje.innerText = `Buscando canal activo para el sensor: ${sensorId}...`;
+ 
+    setTimeout(() => {
+        loaderTexto.innerText = "Vinculación completa, porfavor utilice el dispositivo";
+        mensaje.innerText = "Sincronización establecida. Realice la toma física de la muestra con el lector de hardware.";
+ 
+        escucharCambiosFirebase(sensorId);
+    }, 3000);
 }
 
 // --- PASO EXTRA DE PERSISTENCIA EXPLICITA REQUERIDO ---

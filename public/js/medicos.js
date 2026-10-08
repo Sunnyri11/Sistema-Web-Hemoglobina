@@ -89,7 +89,7 @@ async function cargarPacientes() {
         }
 
         contenedor.innerHTML = pacientes.map(p => {
-            const nombreCompleto = `${p.nombres || ''} ${p.apellidos || ''}`.trim() || 'Paciente sin nombre';
+            const nombreCompleto = getFullName(p);
 
             // Validamos el nombre de la propiedad cuidando las mayúsculas de tu backend (TipoSangre o tipoSangre)
             const tipoSangre = p.tipoSangre || p.TipoSangre || 'No registrado';
@@ -163,7 +163,7 @@ async function cargarMedico() {
             const persona = datosmedicos.Persona || datosmedicos.persona;
 
             if (persona) {
-                var nombremedico = persona.nombre + " " + persona.apellido
+                var nombremedico = getFullName(persona);
                 document.getElementById("txtMedico").innerText = `Dr(a). ${nombremedico}`;
             } else {
                 console.warn("La respuesta no contiene el nodo 'Persona'.");
@@ -245,7 +245,7 @@ async function cargarDashboardMedico() {
                 }
 
                 const hbValor = p.tipoSangre ? p.tipoSangre : "Sin registros";
-                const nombreCompleto = `${p.nombre} ${p.apellido}`;
+                const nombreCompleto = getFullName(p);
                 const letraInicial = nombreCompleto.charAt(0).toUpperCase();
                 const ciudad =p.departamento.departamento1+" / "+p.ciudad.nombre;
                 // CORREGIDO: Aseguramos el ID correcto que viene del objeto de la iteración
@@ -441,7 +441,7 @@ function filtrarPacientes() {
 
    
         const resultadosFiltrados = listaPacientesGlobal.filter(p => {
-            const nombreCompleto = `${p.nombre || ''} ${p.apellido || ''}`.toLowerCase();
+            const nombreCompleto = getFullName(p).toLowerCase();
             return nombreCompleto.includes(textoBusqueda);
         });
 
@@ -455,7 +455,7 @@ function filtrarPacientes() {
         resultadosFiltrados.forEach(p => {
             let badgeEstilo = p.estadoSalud === "Anemia" ? "badge-anemia" : p.estadoSalud === "Poliglobulia" ? "badge-poliglobulia" : "badge-normal";
             let colorAvatar = p.estadoSalud === "Anemia" ? "var(--color-anemia)" : p.estadoSalud === "Poliglobulia" ? "var(--color-poliglobulia)" : "var(--color-normal)";
-            const nombreCompleto = `${p.nombre} ${p.apellido}`;
+            const nombreCompleto = getFullName(p);
             const idPacienteActual = p.idUsuario || p.idPaciente || p.IdPaciente;
 
             const fila = document.createElement("tr");
@@ -510,4 +510,8 @@ function filtrarPacientes() {
 function editarPefil()
 {
     window.location.href="EditarMedico.html";
+}
+
+function getFullName(persona){
+    return  `${persona.nombre || ''} ${persona.paterno || ''} ${persona.materno || ''}`.trim() || 'Paciente sin nombre';
 }
