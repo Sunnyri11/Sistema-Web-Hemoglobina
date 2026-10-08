@@ -1,5 +1,4 @@
 import { getFullName } from './utils.js';
-
 // Variable global para almacenar temporalmente los pacientes de la consulta y agilizar el filtro
 let listaPacientesGlobal = [];
 var datosmedicos = {};
@@ -10,23 +9,29 @@ function cerrarSesion() {
     window.location.href = "../index.html";
 }
 
-document.addEventListener("DOMContentLoaded", async function () {
-    const token = localStorage.getItem("token_seguridad");
+//Asignacion Botones
+function initButtons(){
     const btnLogout = document.getElementById("btnCerrarSesion");
     if (btnLogout) {
         btnLogout.addEventListener("click", cerrarSesion);
     }
 
-    // Validación estricta de sesión antes de cargar el panel
-    if (!token) {
-        alert("Acceso no autorizado. Inicie sesión nuevamente.");
-        //window.location.href = "../index.html";
-        return;
-    }
-    await cargarMedico();
-    await cargarDashboardMedico();
+    const btnEdit = document.getElementById("btnEditarPerfil");
+    if(btnEdit){ btnEdit.addEventListener("click", editarPefil);}
 
-    // 2. FILTRO EN TIEMPO REAL DESDE EL CAMPO DE TEXTO DEL HTML
+
+    const tabMis = document.getElementById('tabMisPacientes');
+    const tabAnadir = document.getElementById('tabAnadirPacientes');
+
+    if(tabMis){
+        tabMis.addEventListener("click", ()=>cambiarPestana('mis-pacientes'));
+    }
+
+    if(tabAnadir){
+        tabAnadir.addEventListener("click", ()=>cambiarPestana('anadir-pacientes'));
+    }
+
+        // 2. FILTRO EN TIEMPO REAL DESDE EL CAMPO DE TEXTO DEL HTML
     const inputBuscar = document.getElementById("txtBuscarPaciente");
     if (inputBuscar) {
         inputBuscar.addEventListener("input", function (e) {
@@ -44,7 +49,23 @@ document.addEventListener("DOMContentLoaded", async function () {
                 }
             });
         });
+        inputBuscar.addEventListener("input",filtrarPacientes);
     }
+}
+
+document.addEventListener("DOMContentLoaded", async function () {
+    const token = localStorage.getItem("token_seguridad");
+
+    // Validación estricta de sesión antes de cargar el panel
+    if (!token) {
+        alert("Acceso no autorizado. Inicie sesión nuevamente.");
+        //window.location.href = "../index.html";
+        return;
+    }
+    await cargarMedico();
+    await cargarDashboardMedico();
+
+    initButtons();
 });
 
 async function cargarPacientes() {
@@ -123,8 +144,6 @@ async function cargarPacientes() {
     `;
         }).join('');
 
-
-
     } catch (error) {
         console.error('Error:', error);
         // Usamos el contenedor correcto también en el bloque de error
@@ -138,7 +157,6 @@ async function cargarPacientes() {
         }
     }
 }
-
 
 async function cargarMedico() {
     try {
@@ -182,8 +200,6 @@ async function cargarMedico() {
         console.error("Error en la petición fetch:", error);
     }
 }
-
-
 
 // FUNCIÓN PRINCIPAL DE CONEXIÓN CON EL BACKEND (MÉDICO)
 async function cargarDashboardMedico() {
@@ -315,8 +331,6 @@ async function cargarDashboardMedico() {
     }
 }
 
-
-
 async function eliminarPacienteRelacion(idUsuario) {
     const token = localStorage.getItem("token_seguridad");
 
@@ -383,12 +397,10 @@ function cambiarPestana(pestana) {
     const vistaMis = document.getElementById('vistaMisPacientes');
     const vistaAnadir = document.getElementById('vistaAnadirPacientes');
 
-
     if (pestana === 'mis-pacientes') {
 
         vistaMis.style.display = 'block';
         vistaAnadir.style.display = 'none';
-
 
         tabMis.style.color = '#1e293b';
         tabMis.style.fontWeight = '600';
@@ -397,7 +409,6 @@ function cambiarPestana(pestana) {
         tabAnadir.style.color = '#64748b';
         tabAnadir.style.fontWeight = '500';
         tabAnadir.style.borderBottom = 'none';
-
 
         cargarDashboardMedico();
 
@@ -419,8 +430,6 @@ function cambiarPestana(pestana) {
         cargarPacientes();
     }
 }
-
-
 
 function filtrarPacientes() {
     // Obtener el texto que escribió el usuario (en minúsculas para que no importen las mayúsculas)
