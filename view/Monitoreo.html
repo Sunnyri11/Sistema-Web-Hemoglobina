@@ -19,7 +19,20 @@
         </div>
       </div>
 
-      <div class="btn-group">
+      <!-- =========================================================================
+           🧠 CONTENEDOR DINÁMICO DE INTELIGENCIA ARTIFICIAL (WALLE-HB)
+           ========================================================================= -->
+      <div id="alertasWalleHB" class="contenedor-ia-reporte" style="display: none;">
+        <h4 class="titulo-ia">🤖 Diagnóstico Evolutivo de Walle-HB</h4>
+        <p id="textoAlertaWalleHB" class="texto-alerta-ia"></p>
+        
+        <h5 class="subtitulo-ia">📋 Recomendaciones de Salud Sugeridas:</h5>
+        <ul id="listaRecomendacionesWalleHB" class="lista-ia">
+          <!-- Aquí se inyectan las recomendaciones una a una desde JavaScript -->
+        </ul>
+      </div>
+
+      <div class="btn-group" style="margin-top: 20px;">
         <button class="btn btn-analisis" onclick="abrirModalAnalisis()">
           Realizar Análisis Clínico
         </button>
@@ -66,9 +79,9 @@
     </div>
   </div>
 
+  <!-- CDN para bibliotecas externas -->
   <script src="https://cloudflare.com"></script>
-
-  <!-- CDN Real del complemento para las tablas (AutoTable) -->
+  <script src="https://cloudflare.com"></script>
   <script src="https://cloudflare.com"></script>
   
   <script src="../public/js/config.js"></script>
