@@ -11,7 +11,6 @@ function cerrarSesion() {
     window.location.href = "../index.html";
 }
 
-// --- CARGA INICIAL DEL EXPEDIENTE Y OPTIMIZACIÓN DE RENDIMIENTO ---
 document.addEventListener("DOMContentLoaded", async function () {
     const token = localStorage.getItem("token_seguridad");
 
@@ -25,8 +24,9 @@ document.addEventListener("DOMContentLoaded", async function () {
     }
     
     try {
-        // Ejecutamos la carga de los datos personales
+        // Ejecutamos la carga de los datos personales primero
         await cargarPaciente();
+        
         const respuesta = await fetch(`${API_URL}Dashboard/paciente`, { 
             method: "GET",
             headers: {
@@ -37,7 +37,7 @@ document.addEventListener("DOMContentLoaded", async function () {
 
         if (respuesta.ok) {
             const datos = await respuesta.json();
-
+            console.log(datos);
             nombrePacienteEnMemoria = datos.nombreCompleto || "Paciente";
             historialPacienteEnMemoria = datos.historial || [];
 
@@ -47,24 +47,90 @@ document.addEventListener("DOMContentLoaded", async function () {
                     estadoDiv.textContent = "Estado: Sin análisis registrados";
                     estadoDiv.className = "estado estable";
                 }
+                
+                // Limpiamos los contenedores de Walle-HB si no hay datos
+                const divAlertasIa = document.getElementById("alertasWalleHB");
+                if (divAlertasIa) divAlertasIa.style.display = "none";
+                
                 if (typeof inicializarGrafico === "function") inicializarGrafico([], []);
                 return;
             }
 
+            // 📈 CORREGIDO: Mapeo de fechas reales para eliminar los rótulos 'undefined' del gráfico
             const registrosCronologicos = [...historialPacienteEnMemoria].reverse();
-            const etiquetasSecuenciales = registrosCronologicos.map((r, index) => `Medición ${index + 1}`);
+            const etiquetasSecuenciales = registrosCronologicos.map(r => r.fecha || r.Fecha || "S/F");
             
-            // Soportamos de forma segura las variaciones de propiedades
+            // Soportamos de forma segura las variaciones de propiedades numéricas
             const valoresHemoglobina = registrosCronologicos.map(r => parseFloat(r.valorHemoglobina || r.ValorHemoglobina || 0));
-
             const ultimaHemoglobina = parseFloat(historialPacienteEnMemoria[0].valorHemoglobina || historialPacienteEnMemoria[0].ValorHemoglobina || 0);
             
-            if (typeof actualizarEstadoClinico === "function") {
-                actualizarEstadoClinico(ultimaHemoglobina);
-            }
-
             if (typeof inicializarGrafico === "function") {
                 inicializarGrafico(etiquetasSecuenciales, valoresHemoglobina);
+            }
+
+            // =========================================================================
+            // 🧠 INTEGRACIÓN MÓDULO ANALÍTICO EVOLUTIVO DE WALLE-HB (CORREGIDO)
+            // =========================================================================
+            const iaNode = datos.analisisIA || datos.analisisia;
+            
+            if (iaNode) {
+                // 1. Actualizamos el estado de la cabecera usando el dictamen matemático puro del .pkl
+                const estadoDiv = document.getElementById("estadoPaciente");
+                if (estadoDiv) {
+                    const stringEstado = Array.isArray(iaNode.estado) ? iaNode.estado[0] : iaNode.estado;
+                    estadoDiv.textContent = `ESTADO: ${stringEstado.toUpperCase()} (${ultimaHemoglobina} G/DL)`;
+                    
+                    // Asignamos estilos según la predicción de la IA
+                    if (stringEstado === "Anemia") {
+                        estadoDiv.className = "estado anemia";
+                    } else if (stringEstado === "Poliglobulia") {
+                        estadoDiv.className = "estado poliglobulia";
+                    } else {
+                        estadoDiv.className = "estado estable";
+                    }
+                }
+
+                // 2. ✅ CORREGIDO: Reemplazamos la letra 'R' por tu frase personalizada y formateamos las alertas de la IA
+                const alertaTextoDiv = document.getElementById("textoAlertaWalleHB");
+                const divContenedorIa = document.getElementById("alertasWalleHB");
+                
+                if (alertaTextoDiv && iaNode.alertas) {
+                    let mensajePuro = "";
+                    
+                    // Extraemos la cadena de texto de forma segura sin importar si viene empaquetada en un array
+                    if (Array.isArray(iaNode.alertas) && iaNode.alertas.length > 0) {
+                        mensajePuro = iaNode.alertas[0];
+                    } else if (typeof iaNode.alertas === "string") {
+                        mensajePuro = iaNode.alertas;
+                    }
+
+                    if (mensajePuro.length > 0) {
+                        // Reemplazamos los saltos de línea \n por etiquetas <br> para un renderizado HTML adecuado
+                        const mensajeFormateado = mensajePuro.replace(/\n/g, "<br>");
+                        
+                        // Inyectamos tu frase personalizada en negrita seguida del reporte analítico
+                        alertaTextoDiv.innerHTML = `<strong>Obtenido del historial de mediciones:</strong><br><br>${mensajeFormateado}`;
+                        if (divContenedorIa) divContenedorIa.style.display = "block";
+                    }
+                }
+
+                // 3. Renderizamos la lista de recomendaciones clínicas una a una
+                const listaUl = document.getElementById("listaRecomendacionesWalleHB");
+                if (listaUl && iaNode.recomendaciones) {
+                    listaUl.innerHTML = ""; // Limpiamos el cargador previo
+                    
+                    iaNode.recomendaciones.forEach(rec => {
+                        const li = document.createElement("li");
+                        li.textContent = rec;
+                        li.className = "item-recommendacion-ia"; // Mantenemos tu clase CSS limpia
+                        listaUl.appendChild(li);
+                    });
+                }
+            } else {
+                // Fallback por si la IA no responde temporalmente: ejecuta tus reglas fijas tradicionales
+                if (typeof actualizarEstadoClinico === "function") {
+                    actualizarEstadoClinico(ultimaHemoglobina);
+                }
             }
 
         } else {
@@ -76,6 +142,7 @@ document.addEventListener("DOMContentLoaded", async function () {
     }
 });
 
+
 async function cargarPaciente() {
     try {
         const token = localStorage.getItem("token_seguridad");
@@ -85,7 +152,6 @@ async function cargarPaciente() {
             return;
         }
 
-        // CORREGIDO: Apuntamos al endpoint correspondiente
         const respuesta = await fetch(`${API_URL}Paciente/MisDatos/${id}`, {
             method: "GET",
             headers: {
@@ -96,9 +162,8 @@ async function cargarPaciente() {
         
         if (respuesta.ok) {
             datospaciente = await respuesta.json();
-            console.log("Datos recibidos del servidor:", datospaciente); // CORREGIDO: Removida la 's' plural
+            console.log("Datos recibidos del servidor:", datospaciente);
 
-            // CORREGIDO: Acceso adaptado respetando el PascalCase que envía tu objeto anónimo en C#
             const paci = datospaciente.Persona || datospaciente.persona;
             const correo = datospaciente.Correo || datospaciente.correo;
             const tipoSangreObjeto = datospaciente.TipoSangre || datospaciente.tipoSangre;
@@ -112,14 +177,12 @@ async function cargarPaciente() {
                 edad--;
             }
  
-            // Buscamos el nombre de la columna real (tipoDeSangre o TipoDeSangre)
             const tipoSangreTexto = tipoSangreObjeto ? (tipoSangreObjeto.tipoDeSangre || tipoSangreObjeto.TipoDeSangre || "No registrado") : "No registrado";
-            
-            console.log("Mi paciente: " + paci);
-            const nombrepacientecompleto = paci ? `${paci.Nombre || paci.nombre || ''} ${paci.Paterno || paci.paterno || ''} ${paci.Materno || paci.materno || ''}`.trim() : 'Paciente sin nombre';
+            const nombrepacientecompleto = paci ? `${paci.Nombre || paci.nombre || ''} ${paci.Apellido || paci.apellido || ''}`.trim() : 'Paciente sin nombre';
             const correoTexto = correo ? (correo.CorreoElectronico || correo.correoElectronico || 'Sin correo') : 'Sin correo';
-            const departamento=datospaciente.departamento.departamento1;
-            const ciudad =datospaciente.ciudad.nombre;
+            const departamento = datospaciente.departamento.departamento1;
+            const ciudad = datospaciente.ciudad.nombre;
+            
             const infoDiv = document.getElementById("infoPaciente");
             if (infoDiv) {
                 infoDiv.innerHTML = `
@@ -129,7 +192,7 @@ async function cargarPaciente() {
                     <p><strong>Departamento:</strong> ${departamento}</p>
                     <p><strong>Ciudad:</strong> ${ciudad}</p>
                     <p><strong>Tipo de Sangre:</strong> ${tipoSangreTexto}</p>
-                    <div id="estadoPaciente" class="estado">Evaluando historial...</div>
+                    <div id="estadoPaciente" class="estado">Evaluando historial con Walle-HB...</div>
                 `;
             }
         }
@@ -153,7 +216,6 @@ function actualizarEstadoClinico(ultimaHemoglobina) {
         estadoDiv.className = "estado estable";
     }
 }
-
 
 // ============================================================================
 // LIBRERÍA GRÁFICA INTEGRADA (0% Internet - Inmune a bloqueos)

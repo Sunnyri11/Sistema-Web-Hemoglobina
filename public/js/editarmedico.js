@@ -37,6 +37,7 @@ async function cargarMedico() {
             datosmedicos = await respuesta.json();
             console.log("Datos recibidos del servidor:", datosmedicos);
             const med = datosmedicos.persona;
+            console.log("Datos Medico:")
             console.log(med);
             document.getElementById("nombre").value = med.nombre;
 
