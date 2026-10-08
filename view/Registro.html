@@ -11,27 +11,26 @@
 </head>
 
 <body>
-
   <div class="card">
     <div class="header-title">
       <h1>Sistema de Análisis</h1>
       <p>Registro de Nuevo Usuario</p>
     </div>
 
-    <form id="formRegistro">
+    <form id="formRegistro" novalidate>
       <div class="form-group">
         <label for="nombre">Nombre(s)</label>
-        <input type="text" id="nombre" name="nombre" required placeholder="Ej. Carlos">
+        <input type="text" id="nombre" name="nombre" required maxlength="30" placeholder="Ej. Carlos">
       </div>
 
       <div class="row-2">
         <div class="form-group">
           <label for="apellido_paterno">Apellido Paterno</label>
-          <input type="text" id="apellido_paterno" name="apellido_paterno" required placeholder="Ej. Pérez">
+          <input type="text" id="apellido_paterno" name="apellido_paterno" maxlength="30" placeholder="Ej. Pérez">
         </div>
         <div class="form-group">
           <label for="apellido_materno">Apellido Materno</label>
-          <input type="text" id="apellido_materno" name="apellido_materno" required placeholder="Ej. Gómez">
+          <input type="text" id="apellido_materno" name="apellido_materno" maxlength="30" placeholder="Ej. Gómez">
         </div>
       </div>
 
@@ -71,18 +70,26 @@
 
       <div class="form-group">
         <label for="altitud">Altitud (m.s.n.m.)</label>
-        <input type="number" id="altitud" name="altitud" placeholder="Ej. 3600" required>
-        <span class="helper-text">Modificable según la localidad exacta.</span>
+        <input type="number" id="altitud" name="altitud" min="0" placeholder="Ej. 3600" required>
+        <span class="helper-text">Modificable según la localidad exacta. No se permiten valores negativos.</span>
       </div>
 
       <div class="form-group">
         <label for="correo">Correo Electrónico</label>
-        <input type="email" id="correo" name="correo" required placeholder="ejemplo@correo.com">
+        <input type="email" id="correo" name="correo" required maxlength="30" placeholder="ejemplo@correo.com">
       </div>
 
+      <!-- Contraseña -->
       <div class="form-group">
         <label for="password">Contraseña</label>
-        <input type="password" id="password" name="password" required placeholder="••••••••">
+        <input type="password" id="password" name="password" required maxlength="16" placeholder="••••••••">
+        <span class="helper-text">De 8 a 16 caracteres, al menos una mayúscula, una minúscula, un número y un carácter especial.</span>
+      </div>
+
+      <!-- Confirmar Contraseña -->
+      <div class="form-group">
+        <label for="confirm_password">Confirmar Contraseña</label>
+        <input type="password" id="confirm_password" name="confirm_password" required maxlength="16" placeholder="••••••••">
       </div>
 
       <div class="form-group">
@@ -95,8 +102,8 @@
       </div>
 
       <div id="contenedorTipoSangre" class="form-group" style="display: none; margin-top: 16px;">
-        <label for="Tipo_Sangre">Departamento</label>
-        <select id="Tipo_Sangre" name="Tipo_Sangre" required>
+        <label for="Tipo_Sangre">Tipo de Sangre</label>
+        <select id="Tipo_Sangre" name="Tipo_Sangre">
           <option value="" disabled selected>Seleccione su tipo de sangre</option>
           <optgroup label="Grupo O">
             <option value="O+">O Positivo (O+)</option>
@@ -134,14 +141,17 @@
   <script src="../public/js/config.js"></script>
   <script>
     var idciudade = 0;
-    // 1. Cargar Departamentos automáticamente desde MySQL al abrir la página
+
+    // Establecer fecha máxima permitida en el input de fecha (hoy) para evitar fechas futuras
     document.addEventListener("DOMContentLoaded", async () => {
+      const hoy = new Date().toISOString().split("T")[0];
+      document.getElementById("fecha_nacimiento").setAttribute("max", hoy);
+
       const selectDepto = document.getElementById('departamento');
       try {
         const respuesta = await fetch(`${API_URL}geografia/departamentos`);
         if (respuesta.ok) {
           const departamentos = await respuesta.json();
-          console.log(departamentos);
           selectDepto.innerHTML = '<option value="" disabled selected>Seleccione departamento</option>';
           departamentos.forEach(d => {
             let option = document.createElement('option');
@@ -186,25 +196,19 @@
     // 3. Evaluar Rol de manera dinámica
     async function Selector() {
       const rolSeleccionado = document.getElementById("rol").value;
-
-      // Selectores de Especialidad
       const contenedorEsp = document.getElementById("contenedorEspecialidad");
       const selectEsp = document.getElementById("especialidad");
-
-      // Selectores de Tipo de Sangre
       const contenedorSangre = document.getElementById("contenedorTipoSangre");
       const selectSangre = document.getElementById("Tipo_Sangre");
 
-      // Limpieza por defecto (Ocultar ambos y quitar la obligatoriedad)
       contenedorEsp.style.display = "none";
       selectEsp.removeAttribute("required");
       selectEsp.innerHTML = '<option value="" disabled selected>Seleccione especialidad</option>';
 
       contenedorSangre.style.display = "none";
       selectSangre.removeAttribute("required");
-      selectSangre.value = ""; // Resetea la selección de sangre
+      selectSangre.value = "";
 
-      // Lógica según el Rol seleccionado
       if (rolSeleccionado === "Medico") {
         contenedorEsp.style.display = "block";
         selectEsp.setAttribute("required", "required");
@@ -225,7 +229,7 @@
         }
       } else if (rolSeleccionado === "Paciente") {
         contenedorSangre.style.display = "block";
-        selectSangre.setAttribute("required", "required"); // Se vuelve obligatorio si es Paciente
+        selectSangre.setAttribute("required", "required");
       }
     }
 
@@ -235,7 +239,6 @@
       const optionSeleccionada = selectProvincia.options[selectProvincia.selectedIndex];
       const inputAltitud = document.getElementById('altitud');
       idciudade = optionSeleccionada.value;
-      console.log(idciudade);
       if (optionSeleccionada && optionSeleccionada.value) {
         const altitud = optionSeleccionada.getAttribute('data-altitud');
         inputAltitud.value = altitud || 0;
@@ -244,49 +247,148 @@
       }
     }
 
-    // 5. Envío estructurado del JSON final discriminando el rol hacia la API
+    // 5. Envío estructurado y validado hacia la API
     document.getElementById('formRegistro').addEventListener('submit', async function (e) {
       e.preventDefault();
 
-      // 1. Declaración e inicialización correcta de los elementos del DOM
-      const selectDepto = document.getElementById('departamento');
-      const selectProv = document.getElementById('provincia');
-      const selectEsp = document.getElementById('especialidad');
+      // Recolección de valores
+      const nombre = document.getElementById('nombre').value.trim();
+      const apellidoPaterno = document.getElementById('apellido_paterno').value.trim();
+      const apellidoMaterno = document.getElementById('apellido_materno').value.trim();
+      const inputFecha = document.getElementById('fecha_nacimiento').value;
+      const selectDepto = document.getElementById('departamento').value;
+      const selectProv = document.getElementById('provincia').value;
+      const altitudVal = parseFloat(document.getElementById('altitud').value);
+      const correo = document.getElementById('correo').value.trim();
+      const password = document.getElementById('password').value;
+      const confirmPassword = document.getElementById('confirm_password').value;
       const rolSeleccionado = document.getElementById('rol').value;
 
-      // Validación preventiva: Asegurar que la fecha esté seleccionada
-      const inputFecha = document.getElementById('fecha_nacimiento').value;
+      // EXPRESIONES REGULARES DE VALIDACIÓN
+      const soloTextoRegex = /^[A-Za-zÁÉÍÓÚáéíóúÑñ\s]+$/;
+      const correoRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+      // Contraseña: De 8 a 16 caracteres, al menos una minúscula, una mayúscula, un número y un caracter especial
+      const passwordRegex = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[\W_]).{8,16}$/;
+
+      // --- VALIDACIONES ---
+
+      // 1. Nombres: Obligatorio, solo texto, máximo 30 caracteres
+      if (!nombre) {
+        alert("El campo Nombre(s) es obligatorio.");
+        return;
+      }
+      if (nombre.length > 30) {
+        alert("El Nombre no debe exceder los 30 caracteres.");
+        return;
+      }
+      if (!soloTextoRegex.test(nombre)) {
+        alert("El Nombre solo debe aceptar caracteres de texto (sin números ni símbolos especiales).");
+        return;
+      }
+
+      // 2. Apellido Paterno (Opcional)
+      if (apellidoPaterno !== "") {
+        if (apellidoPaterno.length > 30) {
+          alert("El Apellido Paterno no debe exceder los 30 caracteres.");
+          return;
+        }
+        if (!soloTextoRegex.test(apellidoPaterno)) {
+          alert("El Apellido Paterno solo debe aceptar caracteres de texto.");
+          return;
+        }
+      }
+
+      // 3. Apellido Materno (Opcional)
+      if (apellidoMaterno !== "") {
+        if (apellidoMaterno.length > 30) {
+          alert("El Apellido Materno no debe exceder los 30 caracteres.");
+          return;
+        }
+        if (!soloTextoRegex.test(apellidoMaterno)) {
+          alert("El Apellido Materno solo debe aceptar caracteres de texto.");
+          return;
+        }
+      }
+
+      // 4. Fecha de nacimiento (No futura)
       if (!inputFecha) {
         alert("Por favor, ingrese una fecha de nacimiento válida.");
         return;
       }
+      const fechaNacimientoDate = new Date(inputFecha);
+      const hoyDate = new Date();
+      hoyDate.setHours(0, 0, 0, 0);
+      if (fechaNacimientoDate > hoyDate) {
+        alert("La fecha de nacimiento no puede ser una fecha futura.");
+        return;
+      }
 
-      // 2. Extraer de forma segura los textos seleccionados de los selectores HTML
-      const departamentoTexto = selectDepto && selectDepto.selectedIndex !== -1 ? selectDepto.options[selectDepto.selectedIndex].text : "";
-      const departamentoId = selectDepto && selectDepto.value ? parseInt(selectDepto.value) : 0;
-      const provinciaTexto = selectProv && selectProv.selectedIndex !== -1 ? selectProv.options[selectProv.selectedIndex].text : "";
+      // 5. Departamento y Ciudad obligatorios
+      if (!selectDepto) {
+        alert("Debe seleccionar un Departamento.");
+        return;
+      }
+      if (!selectProv) {
+        alert("Debe seleccionar una Ciudad/Provincia.");
+        return;
+      }
 
-      // 3. Estructuración del objeto con los nombres exactos exigidos por REGISTROFORMCLS en C#
+      // 6. Altitud no negativa
+      if (isNaN(altitudVal) || altitudVal < 0) {
+        alert("La altitud no puede ser un valor negativo.");
+        return;
+      }
+
+      // 7. Correo electrónico (Formato y max 30 caracteres)
+      if (!correo) {
+        alert("El correo electrónico es obligatorio.");
+        return;
+      }
+      if (correo.length > 30) {
+        alert("El correo electrónico no debe exceder los 30 caracteres.");
+        return;
+      }
+      if (!correoRegex.test(correo)) {
+        alert("Por favor, ingrese un formato de correo electrónico válido (ejemplo@ej.com).");
+        return;
+      }
+
+      // 8. Contraseña (De 8 a 16 caracteres, min, may, num y especial)
+      if (!passwordRegex.test(password)) {
+        alert("La contraseña debe tener entre 8 y 16 caracteres, incluir letras minúsculas, mayúsculas, números y al menos un carácter especial.");
+        return;
+      }
+
+      // 9. Confirmar Contraseña (Coincidencia)
+      if (password !== confirmPassword) {
+        alert("Las contraseñas no coinciden. Por favor, verifíquelas.");
+        return;
+      }
+
+      // Construcción del objeto para enviar a la API
+      const selectDeptoElement = document.getElementById('departamento');
+      const selectProvElement = document.getElementById('provincia');
+      const selectEspElement = document.getElementById('especialidad');
+
+      const departamentoTexto = selectDeptoElement && selectDeptoElement.selectedIndex !== -1 ? selectDeptoElement.options[selectDeptoElement.selectedIndex].text : "";
+      const departamentoId = selectDeptoElement && selectDeptoElement.value ? parseInt(selectDeptoElement.value) : 0;
+      const provinciaTexto = selectProvElement && selectProvElement.selectedIndex !== -1 ? selectProvElement.options[selectProvElement.selectedIndex].text : "";
+
       const dataUsuario = {
-        nombre: document.getElementById('nombre').value.trim(),
-        apellidoPaterno: document.getElementById('apellido_paterno').value.trim(),
-        apellidoMaterno: document.getElementById('apellido_materno').value.trim(),
+        nombre: nombre,
+        apellidoPaterno: apellidoPaterno,
+        apellidoMaterno: apellidoMaterno,
         genero: document.querySelector('input[name="genero"]:checked')?.value || "",
         fechaNacimiento: inputFecha,
-
-        // Atributos de ubicación requeridos por tu clase C#
         departamento: departamentoTexto,
         idDepartamento: departamentoId,
         provincia: provinciaTexto,
-        altitud: document.getElementById('altitud') ? parseFloat(document.getElementById('altitud').value) : 3600, // Valor por defecto o dinámico
-
-        correo: document.getElementById('correo').value.trim(),
-        password: document.getElementById('password').value,
+        altitud: altitudVal,
+        correo: correo,
+        password: password,
         rol: rolSeleccionado,
-
-        // Campos específicos condicionales
         tipo_sangre: rolSeleccionado === "Paciente" ? document.getElementById("Tipo_Sangre").value : null,
-        idEspecialidad: rolSeleccionado === "Medico" ? parseInt(selectEsp.value) : 0
+        idEspecialidad: rolSeleccionado === "Medico" ? parseInt(selectEspElement.value) : 0
       };
 
       try {
@@ -312,9 +414,6 @@
         console.error("Error en la petición Fetch:", error);
       }
     });
-
   </script>
-
 </body>
-
 </html>

@@ -1,13 +1,7 @@
-import { getFullName } from './utils.js';
+import { getFullName, cerrarSesion  } from './utils.js';
 // Variable global para almacenar temporalmente los pacientes de la consulta y agilizar el filtro
 let listaPacientesGlobal = [];
 var datosmedicos = {};
-
-function cerrarSesion() {
-    localStorage.removeItem("token_seguridad");
-    localStorage.removeItem("usuario_id");
-    window.location.href = "../index.html";
-}
 
 //Asignacion Botones
 function initButtons(){
