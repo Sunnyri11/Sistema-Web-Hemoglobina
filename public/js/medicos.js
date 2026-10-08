@@ -1,3 +1,5 @@
+import { getFullName } from './utils.js';
+
 // Variable global para almacenar temporalmente los pacientes de la consulta y agilizar el filtro
 let listaPacientesGlobal = [];
 var datosmedicos = {};
@@ -510,8 +512,4 @@ function filtrarPacientes() {
 function editarPefil()
 {
     window.location.href="EditarMedico.html";
-}
-
-function getFullName(persona){
-    return  `${persona.nombre || ''} ${persona.paterno || ''} ${persona.materno || ''}`.trim() || 'Paciente sin nombre';
 }
