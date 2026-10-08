@@ -111,3 +111,44 @@ h3 { font-size: 16px; font-weight: 700; color: var(--text-main); margin-bottom: 
 
 .btn-close-modal { background: none; border: none; color: var(--text-muted); font-size: 22px; position: absolute; top: 15px; right: 20px; cursor: pointer; }
 .btn-close-modal:hover { color: var(--danger); }
+
+    .contenedor-ia-reporte {
+      margin-top: 20px;
+      padding: 15px;
+      border-radius: 8px;
+      background-color: #f8f9fa;
+      border-left: 5px solid #17a2b8;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+    }
+    .titulo-ia {
+      margin: 0 0 10px 0;
+      color: #17a2b8;
+      font-size: 16px;
+      font-weight: 700;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+    .texto-alerta-ia {
+      font-size: 14px;
+      line-height: 1.5;
+      color: #333;
+      margin-bottom: 12px;
+    }
+    .subtitulo-ia {
+      margin: 10px 0 6px 0;
+      color: #495057;
+      font-size: 14px;
+      font-weight: 600;
+    }
+    .lista-ia {
+      margin: 0;
+      padding-left: 20px;
+      font-size: 13.5px;
+      color: #495057;
+      list-style-type: none; 
+    }
+    .item-recomendacion-ia {
+      margin-bottom: 6px;
+      line-height: 1.4;
+    }
