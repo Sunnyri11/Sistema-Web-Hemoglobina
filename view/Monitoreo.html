@@ -1,12 +1,15 @@
 <!DOCTYPE html>
 <html lang="es">
+
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Sistema de Monitoreo - Hemoglobina</title>
-<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.8/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-sRIl4kxILFvY47J16cr9ZwB07vP4J8+LH7qKQnuqkuIAvNWLzeN8tE5YBujZqJLB" crossorigin="anonymous">
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.8/dist/css/bootstrap.min.css" rel="stylesheet"
+    integrity="sha384-sRIl4kxILFvY47J16cr9ZwB07vP4J8+LH7qKQnuqkuIAvNWLzeN8tE5YBujZqJLB" crossorigin="anonymous">
   <link rel="stylesheet" href="../public/css/monitoreo.css">
 </head>
+
 <body>
 
   <div class="container">
@@ -15,7 +18,8 @@
         <h1>Sistema de Monitoreo</h1>
         <div class="subtitle">Panel de Control de Usuario</div>
         <div class="paciente-info" id="infoPaciente">
-          <p style="text-align: center; color: var(--text-muted);">Sincronizando expediente con el servidor central...</p>
+          <p style="text-align: center; color: var(--text-muted);">Sincronizando expediente con el servidor central...
+          </p>
         </div>
       </div>
 
@@ -25,7 +29,7 @@
       <div id="alertasWalleHB" class="contenedor-ia-reporte" style="display: none;">
         <h4 class="titulo-ia">🤖 Diagnóstico Evolutivo de Walle-HB</h4>
         <p id="textoAlertaWalleHB" class="texto-alerta-ia"></p>
-        
+
         <h5 class="subtitulo-ia">📋 Recomendaciones de Salud Sugeridas:</h5>
         <ul id="listaRecomendacionesWalleHB" class="lista-ia">
           <!-- Aquí se inyectan las recomendaciones una a una desde JavaScript -->
@@ -48,43 +52,69 @@
     </div>
 
     <div class="right-section">
-      <h3>Evolución de Niveles de Hemoglobina</h3>
-      <div class="chart-container" style="position: relative; height:320px; width:100%;">
+
+      <div class="filtros-contenedor" style="margin-bottom: 25px; padding: 10px; background: #fff; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.02);">
+        <span style="font-weight: 700; color: #1e293b; display: block; margin-bottom: 10px; font-size: 14px;">Filtrar historial por tiempo:</span>
+        <div style="display: flex; gap: 8px; flex-wrap: wrap;">
+          <button class="btn" style="background-color: #e2e8f0; color: #334155; padding: 8px 16px; min-width: auto; font-size: 13px;" onclick="aplicarFiltroTiempo('dias')">Hoy</button>
+          <button class="btn" style="background-color: #e2e8f0; color: #334155; padding: 8px 16px; min-width: auto; font-size: 13px;" onclick="aplicarFiltroTiempo('semanas')">7 Días</button>
+          <button class="btn" style="background-color: #e2e8f0; color: #334155; padding: 8px 16px; min-width: auto; font-size: 13px;" onclick="aplicarFiltroTiempo('meses')">Mes</button>
+          <button class="btn" style="background-color: #e2e8f0; color: #334155; padding: 8px 16px; min-width: auto; font-size: 13px;" onclick="aplicarFiltroTiempo('anos')">Año</button>
+          <button class="btn" style="background-color: var(--primary, #818cf8); color: #fff; padding: 8px 16px; min-width: auto; font-size: 13px; font-weight: bold;" onclick="aplicarFiltroTiempo('todos')">Ver Todo</button>
+        </div>
+      </div>
+
+      <!-- Gráfico de Hemoglobina -->
+      <h3 style="margin-top: 15px; margin-bottom: 10px;">Evolución de Niveles de Hemoglobina</h3>
+      <div class="chart-container" style="position: relative; height:240px; width:100%; margin-bottom: 35px; background: #fff; border-radius: 8px; padding: 10px;">
         <canvas id="graficoHemoglobina"></canvas>
       </div>
-    </div>
-  </div>
 
-  <div id="modalAnalisis" class="modal-overlay">
-    <div class="modal-box">
-      <button class="btn-close-modal" onclick="cerrarModalAnalisis()">&times;</button>
-      <h2 id="modalTitulo">Vincular Dispositivo Médico</h2>
-      <p id="modalMensaje">Por favor, ingrese manualmente el código identificador de su sensor biométrico para iniciar.</p>
-      
-      <div id="inputSection">
-        <input type="text" id="txtSensorId" class="input-codigo" placeholder="Escriba el código del sensor..." autocomplete="off">
-        <button class="btn btn-analisis" style="background-color: var(--primary);" onclick="iniciarVinculacionManual()">
-          Vincular Código
-        </button>
-      </div>
-
-      <div id="loaderSection" class="spinner-box">
-        <div class="spinner" id="iconoCarga"></div>
-        <h4 id="loaderTexto" style="color: var(--primary); font-weight: 700; margin-bottom: 12px;">Conectando...</h4>
-        
-        <button id="btnGuardarSQL" class="btn" style="background-color: var(--success); color: #fff; display: none; width: 80%; margin: 10px auto 0 auto;" onclick="ejecutarGuardadoDefinitivo()">
-          Guardar Análisis
-        </button>
+      <!-- Gráfico de Temperatura -->
+      <h3 style="margin-bottom: 10px;">Evolución de Temperatura</h3>
+      <div class="chart-container" style="position: relative; height:240px; width:100%; background: #fff; border-radius: 8px; padding: 10px;">
+        <canvas id="graficoTemperatura"></canvas>
       </div>
     </div>
-  </div>
 
-  <!-- CDN para bibliotecas externas -->
-  <script src="https://cloudflare.com"></script>
-  <script src="https://cloudflare.com"></script>
-  <script src="https://cloudflare.com"></script>
-  
-  <script src="../public/js/config.js"></script>
-  <script src="../public/js/paciente.js"></script>
+
+
+    <div id="modalAnalisis" class="modal-overlay">
+      <div class="modal-box">
+        <button class="btn-close-modal" onclick="cerrarModalAnalisis()">&times;</button>
+        <h2 id="modalTitulo">Vincular Dispositivo Médico</h2>
+        <p id="modalMensaje">Por favor, ingrese manualmente el código identificador de su sensor biométrico para
+          iniciar.</p>
+
+        <div id="inputSection">
+          <input type="text" id="txtSensorId" class="input-codigo" placeholder="Escriba el código del sensor..."
+            autocomplete="off">
+          <button class="btn btn-analisis" style="background-color: var(--primary);"
+            onclick="iniciarVinculacionManual()">
+            Vincular Código
+          </button>
+        </div>
+
+        <div id="loaderSection" class="spinner-box">
+          <div class="spinner" id="iconoCarga"></div>
+          <h4 id="loaderTexto" style="color: var(--primary); font-weight: 700; margin-bottom: 12px;">Conectando...</h4>
+
+          <button id="btnGuardarSQL" class="btn"
+            style="background-color: var(--success); color: #fff; display: none; width: 80%; margin: 10px auto 0 auto;"
+            onclick="ejecutarGuardadoDefinitivo()">
+            Guardar Análisis
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- CDN para bibliotecas externas -->
+    <script src="https://cloudflare.com"></script>
+    <script src="https://cloudflare.com"></script>
+    <script src="https://cloudflare.com"></script>
+
+    <script src="../public/js/config.js"></script>
+    <script src="../public/js/paciente.js"></script>
 </body>
+
 </html>

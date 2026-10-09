@@ -1,22 +1,186 @@
-// Variables globales para el control del sistema
+var arrayhistorial = []; 
 let chartHemo = null;
 let datosMedicionTemporal = null;
 let historialPacienteEnMemoria = [];
 let nombrePacienteEnMemoria = "Paciente";
-var datospaciente={}
+var datospaciente = {};
+let graficoInstancia = null; 
+
+
+// Instancias independientes para los dos lienzos gráficos
+let graficoHemoInstancia = null;
+let graficoTempInstancia = null;
+
+
+function MiniChartSingleLine(canvasId, minVal, maxVal, color, esTemp) {
+    var n = this;
+    n.canvas = document.getElementById(canvasId);
+    n.ctx = n.canvas ? n.canvas.getContext("2d") : null;
+
+    n.render = function(etiquetas, datos) {
+        if (!n.ctx || !n.canvas || datos.length === 0) return;
+        var o = n.canvas.getBoundingClientRect();
+        n.canvas.width = o.width;
+        n.canvas.height = 240; 
+        
+        var a = n.ctx, c = o.width, i = 240;
+        var r = 50, d = 30, s = c - 90, u = 150;
+
+        a.clearRect(0, 0, c, i);
+
+        // --- Rejilla horizontal y Escala Eje Y ---
+        a.strokeStyle = "#f1f5f9";
+        a.lineWidth = 1;
+        a.font = "11px sans-serif";
+        
+        var rango = maxVal - minVal;
+        for (var l = 0; l <= 4; l++) {
+            var f = minVal + (rango / 4) * l;
+            var g = d + u - (l / 4) * u;
+            a.beginPath();
+            a.moveTo(r, g);
+            a.lineTo(c - 40, g);
+            a.stroke();
+            
+            a.fillStyle = "#64748b";
+            a.fillText(f.toFixed(1), 10, g + 4);
+        }
+
+        var totalPuntos = datos.length;
+        var puntos = datos.map(function(val, idx) {
+            var posX = r + (totalPuntos > 1 ? (idx / (totalPuntos - 1)) * s : s / 2);
+            var posY = d + u - ((val - minVal) / rango) * u;
+            return { x: posX, y: posY, v: val };
+        });
+
+        // Dibujar Línea
+        a.beginPath();
+        a.strokeStyle = color;
+        a.lineWidth = 3;
+        a.lineJoin = "round";
+        puntos.forEach(function(p, idx) {
+            if (idx === 0) a.moveTo(p.x, p.y);
+            else a.lineTo(p.x, p.y);
+        });
+        a.stroke();
+
+        // Dibujar Nodos y Valores Numéricos
+        puntos.forEach(function(p) {
+            a.beginPath();
+            a.fillStyle = "#ffffff";
+            a.arc(p.x, p.y, 4, 0, 2 * Math.PI);
+            a.fill();
+            a.strokeStyle = color;
+            a.lineWidth = 2;
+            a.stroke();
+
+            a.fillStyle = "#1e293b";
+            a.font = "bold 10px sans-serif";
+            a.fillText(p.v.toFixed(1) + (esTemp ? "°" : ""), p.x - 10, p.y - 10);
+        });
+
+        // Eje X - Rótulos de Fechas
+        a.fillStyle = "#64748b";
+        a.font = "10px sans-serif";
+        etiquetas.forEach(function(fechaStr, idx) {
+            var p = puntos[idx];
+            if (p) {
+                a.save();
+                a.translate(p.x, i - 15);
+                a.rotate(-0.15); 
+                a.fillText(fechaStr, -20, 10);
+                a.restore();
+            }
+        });
+    };
+}
+
+// ============================================================================
+// 3. INICIALIZADOR DE GRÁFICOS (REESCRITO SIN REFERENCIAS ADVERSAS)
+// ============================================================================
+function inicializarGrafico(etiquetas, valoresHemo, valoresTemp) {
+    // 1. Instanciar y renderizar el gráfico independiente de Hemoglobina
+    if (!graficoHemoInstancia) {
+        graficoHemoInstancia = new MiniChartSingleLine('graficoHemoglobina', 8, 18, "#818cf8", false);
+    }
+    graficoHemoInstancia.render(etiquetas, valoresHemo);
+
+    // 2. Instanciar y renderizar el gráfico independiente de Temperatura
+    if (!graficoTempInstancia) {
+        graficoTempInstancia = new MiniChartSingleLine('graficoTemperatura', 35, 41, "#f97316", true);
+    }
+    graficoTempInstancia.render(etiquetas, valoresTemp);
+}
+
+function procesarFiltroCronologico(tipoFiltro) {
+    if (!arrayhistorial || arrayhistorial.length === 0) {
+        inicializarGrafico([], [], []);
+        return;
+    }
+
+    const ahora = new Date();
+    
+    // 1. Filtrado de muestras según la fecha actual
+    const registrosFiltrados = arrayhistorial.filter(registro => {
+        const fStr = registro.fecha || registro.Fecha;
+        if (!fStr) return true; // Si no hay fecha, no lo descartamos por defecto
+        
+        const fechaRegistro = new Date(fStr);
+        const diferenciaTiempo = ahora - fechaRegistro;
+        const diferenciaDias = diferenciaTiempo / (1000 * 60 * 60 * 24);
+
+        switch (tipoFiltro) {
+            case 'dias':
+                return diferenciaDias <= 1; // Últimas 24 horas
+            case 'semanas':
+                return diferenciaDias <= 7; // Últimos 7 días
+            case 'meses':
+                return diferenciaDias <= 30; // Últimos 30 días
+            case 'anos':
+                return diferenciaDias <= 365; // Último año
+            default:
+                return true; // Mostrar todos
+        }
+    });
+
+    // 2. Ordenar cronológicamente (Del más antiguo al más reciente)
+    const registrosOrdenados = registrosFiltrados.sort((a, b) => a.idNivel - b.idNivel);
+
+    // 3. Mapear strings limpios para los ejes X e Y
+    const etiquetasFechas = registrosOrdenados.map(r => {
+        const fStr = r.fecha || r.Fecha;
+        if (!fStr) return "Reg. " + r.idNivel;
+        const f = new Date(fStr);
+        // Retorna formato corto legible "DD/MM" para que entren bien en horizontal
+        return `${f.getDate()}/${f.getMonth() + 1}`;
+    });
+
+    const valoresHemo = registrosOrdenados.map(r => parseFloat(r.valorHemoglobina || 0));
+    const valoresTemp = registrosOrdenados.map(r => parseFloat(r.temperatura || 0));
+
+    // 4. Actualizar de forma limpia ambos gráficos independientes
+    inicializarGrafico(etiquetasFechas, valoresHemo, valoresTemp);
+}
+
+// Vinculación definitiva y forzada a la ventana global de ejecución
+window.aplicarFiltroTiempo = function (tipoFiltro) {
+    procesarFiltroCronologico(tipoFiltro);
+};
+
+
+
 
 function cerrarSesion() {
     localStorage.removeItem("token_seguridad");
-
     window.location.href = "../index.html";
 }
 
 document.addEventListener("DOMContentLoaded", async function () {
     const token = localStorage.getItem("token_seguridad");
-
     const btnLogout = document.getElementById("btnCerrarSesion");
     if (btnLogout) { btnLogout.addEventListener("click", cerrarSesion); }
 
+    // Validación estricta de seguridad en la sesión
     if (!token) {
         alert("Acceso no autorizado. Por favor, inicie sesión nuevamente.");
         window.location.href = "../index.html";
@@ -24,9 +188,10 @@ document.addEventListener("DOMContentLoaded", async function () {
     }
     
     try {
-        // Ejecutamos la carga de los datos personales primero
+        // Carga primaria de expediente personal
         await cargarPaciente();
         
+        // Peticiones paralelas al servidor central
         const respuesta = await fetch(`${API_URL}Dashboard/paciente`, { 
             method: "GET",
             headers: {
@@ -34,53 +199,58 @@ document.addEventListener("DOMContentLoaded", async function () {
                 "Content-Type": "application/json"
             }
         });
+        
+        const id = localStorage.getItem("usuario_id");
+        const respuestahistorial = await fetch(`${API_URL}Paciente/mihistorial/${id}`, {
+            method: "GET",
+            headers: {
+                "Authorization": "Bearer " + token.trim(),
+                "Content-Type": "application/json"
+            }
+        });
+
+        // Almacenamos el historial completo unificado devuelto por tu endpoint
+        if (respuestahistorial.ok) {
+            const historialhemo = await respuestahistorial.json();
+            arrayhistorial = historialhemo.historial || [];
+        }
 
         if (respuesta.ok) {
             const datos = await respuesta.json();
-            console.log(datos);
             nombrePacienteEnMemoria = datos.nombreCompleto || "Paciente";
             historialPacienteEnMemoria = datos.historial || [];
 
-            if (historialPacienteEnMemoria.length === 0) {
+            // Validación por si el expediente clínico está vacío
+            if (arrayhistorial.length === 0) {
                 const estadoDiv = document.getElementById("estadoPaciente");
                 if (estadoDiv) {
                     estadoDiv.textContent = "Estado: Sin análisis registrados";
                     estadoDiv.className = "estado estable";
                 }
-                
-                // Limpiamos los contenedores de Walle-HB si no hay datos
-                const divAlertasIa = document.getElementById("alertasWalleHB");
-                if (divAlertasIa) divAlertasIa.style.display = "none";
-                
-                if (typeof inicializarGrafico === "function") inicializarGrafico([], []);
+                inicializarGrafico([], [], []);
                 return;
             }
 
-            // 📈 CORREGIDO: Mapeo de fechas reales para eliminar los rótulos 'undefined' del gráfico
-            const registrosCronologicos = [...historialPacienteEnMemoria].reverse();
-            const etiquetasSecuenciales = registrosCronologicos.map(r => r.fecha || r.Fecha || "S/F");
-            
-            // Soportamos de forma segura las variaciones de propiedades numéricas
-            const valoresHemoglobina = registrosCronologicos.map(r => parseFloat(r.valorHemoglobina || r.ValorHemoglobina || 0));
-            const ultimaHemoglobina = parseFloat(historialPacienteEnMemoria[0].valorHemoglobina || historialPacienteEnMemoria[0].ValorHemoglobina || 0);
-            
-            if (typeof inicializarGrafico === "function") {
-                inicializarGrafico(etiquetasSecuenciales, valoresHemoglobina);
-            }
+            // 📈 Disparador inicial: Renderiza ambos gráficos con la vista 'todos'
+            aplicarFiltroTiempo('todos');
 
+            // Extracción de las últimas métricas para la tarjeta informativa superior
+            const ultimoRegistro = arrayhistorial[arrayhistorial.length - 1] || {};
+            const ultimaHemoglobina = parseFloat(ultimoRegistro.valorHemoglobina || 0);
+            const ultimaTemp = ultimoRegistro.temperatura || "S/D";
+            
             // =========================================================================
-            // 🧠 INTEGRACIÓN MÓDULO ANALÍTICO EVOLUTIVO DE WALLE-HB (CORREGIDO)
+            // 🧠 INTEGRACIÓN MÓDULO ANALÍTICO EVOLUTIVO DE WALLE-HB
             // =========================================================================
             const iaNode = datos.analisisIA || datos.analisisia;
             
             if (iaNode) {
-                // 1. Actualizamos el estado de la cabecera usando el dictamen matemático puro del .pkl
                 const estadoDiv = document.getElementById("estadoPaciente");
                 if (estadoDiv) {
                     const stringEstado = Array.isArray(iaNode.estado) ? iaNode.estado[0] : iaNode.estado;
-                    estadoDiv.textContent = `ESTADO: ${stringEstado.toUpperCase()} (${ultimaHemoglobina} G/DL)`;
-                    
-                    // Asignamos estilos según la predicción de la IA
+                    estadoDiv.innerHTML = `ESTADO: ${stringEstado.toUpperCase()} (${ultimaHemoglobina} G/DL)<br>Temperatura: ${ultimaTemp}ºC`;
+
+                    // Asignación de estilos dinámicos CSS según el dictamen médico
                     if (stringEstado === "Anemia") {
                         estadoDiv.className = "estado anemia";
                     } else if (stringEstado === "Poliglobulia") {
@@ -90,14 +260,12 @@ document.addEventListener("DOMContentLoaded", async function () {
                     }
                 }
 
-                // 2. ✅ CORREGIDO: Reemplazamos la letra 'R' por tu frase personalizada y formateamos las alertas de la IA
+                // Renderizado adaptativo de la cadena de alertas del modelo .pkl
                 const alertaTextoDiv = document.getElementById("textoAlertaWalleHB");
                 const divContenedorIa = document.getElementById("alertasWalleHB");
                 
                 if (alertaTextoDiv && iaNode.alertas) {
                     let mensajePuro = "";
-                    
-                    // Extraemos la cadena de texto de forma segura sin importar si viene empaquetada en un array
                     if (Array.isArray(iaNode.alertas) && iaNode.alertas.length > 0) {
                         mensajePuro = iaNode.alertas[0];
                     } else if (typeof iaNode.alertas === "string") {
@@ -105,29 +273,25 @@ document.addEventListener("DOMContentLoaded", async function () {
                     }
 
                     if (mensajePuro.length > 0) {
-                        // Reemplazamos los saltos de línea \n por etiquetas <br> para un renderizado HTML adecuado
                         const mensajeFormateado = mensajePuro.replace(/\n/g, "<br>");
-                        
-                        // Inyectamos tu frase personalizada en negrita seguida del reporte analítico
                         alertaTextoDiv.innerHTML = `<strong>Obtenido del historial de mediciones:</strong><br><br>${mensajeFormateado}`;
                         if (divContenedorIa) divContenedorIa.style.display = "block";
                     }
                 }
 
-                // 3. Renderizamos la lista de recomendaciones clínicas una a una
+                // Listado secuencial de recomendaciones clínicas sugeridas
                 const listaUl = document.getElementById("listaRecomendacionesWalleHB");
                 if (listaUl && iaNode.recomendaciones) {
-                    listaUl.innerHTML = ""; // Limpiamos el cargador previo
-                    
+                    listaUl.innerHTML = ""; 
                     iaNode.recomendaciones.forEach(rec => {
                         const li = document.createElement("li");
                         li.textContent = rec;
-                        li.className = "item-recommendacion-ia"; // Mantenemos tu clase CSS limpia
+                        li.className = "item-recommendacion-ia"; 
                         listaUl.appendChild(li);
                     });
                 }
             } else {
-                // Fallback por si la IA no responde temporalmente: ejecuta tus reglas fijas tradicionales
+                // Fallback preventivo si el nodo inteligente falla temporalmente
                 if (typeof actualizarEstadoClinico === "function") {
                     actualizarEstadoClinico(ultimaHemoglobina);
                 }
@@ -138,9 +302,10 @@ document.addEventListener("DOMContentLoaded", async function () {
             cerrarSesion();
         }
     } catch (error) {
-        console.error("Error al conectar con la API de pacientes:", error);
+        console.error("Error crítico detectado en la inicialización:", error);
     }
 });
+
 
 
 async function cargarPaciente() {
@@ -159,7 +324,7 @@ async function cargarPaciente() {
                 "Content-Type": "application/json"
             }
         });
-        
+
         if (respuesta.ok) {
             datospaciente = await respuesta.json();
             console.log("Datos recibidos del servidor:", datospaciente);
@@ -172,17 +337,16 @@ async function cargarPaciente() {
             const fechin = new Date(datospaciente.fechaNacimiento.fechaDeNacimiento);
             let edad = hoy.getFullYear() - fechin.getFullYear();
             const diferenciaMeses = hoy.getMonth() - fechin.getMonth();
-            if (diferenciaMeses < 0 || (diferenciaMeses === 0 && hoy.getDate() < fechin.getDate())) 
-            {
+            if (diferenciaMeses < 0 || (diferenciaMeses === 0 && hoy.getDate() < fechin.getDate())) {
                 edad--;
             }
- 
+
             const tipoSangreTexto = tipoSangreObjeto ? (tipoSangreObjeto.tipoDeSangre || tipoSangreObjeto.TipoDeSangre || "No registrado") : "No registrado";
             const nombrepacientecompleto = paci ? `${paci.Nombre || paci.nombre || ''} ${paci.Apellido || paci.apellido || ''}`.trim() : 'Paciente sin nombre';
             const correoTexto = correo ? (correo.CorreoElectronico || correo.correoElectronico || 'Sin correo') : 'Sin correo';
             const departamento = datospaciente.departamento.departamento1;
             const ciudad = datospaciente.ciudad.nombre;
-            
+
             const infoDiv = document.getElementById("infoPaciente");
             if (infoDiv) {
                 infoDiv.innerHTML = `
@@ -220,27 +384,11 @@ function actualizarEstadoClinico(ultimaHemoglobina) {
 // ============================================================================
 // LIBRERÍA GRÁFICA INTEGRADA (0% Internet - Inmune a bloqueos)
 // ============================================================================
-!function(t,e){"object"==typeof exports&&"undefined"!=typeof module?module.exports=e():"function"==typeof define&&define.amd?define(e):(t="undefined"!=typeof globalThis?globalThis:t||self).Chart=e()}(this,(function(){"use strict";return function(t,e){// Minichart Core para inyección directa en DOM local sin consumo de CPU
-var n=this;n.id=t,n.canvas=document.getElementById(t),n.ctx=n.canvas?n.canvas.getContext("2d"):null,n.render=function(t,e){if(!n.ctx)return;var o=n.canvas.getBoundingClientRect();n.canvas.width=o.width,n.canvas.height=320;var a=n.ctx,c=o.width,i=320,r=50,d=30,s=c-70,u=250;a.clearRect(0,0,c,i),a.strokeStyle="#f1f5f9",a.lineWidth=1,a.font="11px sans-serif",a.fillStyle="#64748b";for(var l=0;l<=4;l++){var f=8+2.5*l,g=d+u-(f-8)/10*u;a.beginPath(),a.moveTo(r,g),a.lineTo(c-20,g),a.stroke(),a.fillText(f.toFixed(1),10,g+4)}var v=e.map((function(t,e){return{x:r+(e/(o.length-1||1))*s,y:d+u-(t-8)/10*u,v:t}}));a.beginPath(),a.strokeStyle="#818cf8",a.lineWidth=3,a.lineJoin="round",v.forEach((function(t,e){0===e?a.moveTo(t.x,t.y):a.lineTo(t.x,t.y)})),a.stroke(),v.forEach((function(t,e){a.beginPath(),a.fillStyle="#ffffff",a.arc(t.x,t.y,5,0,2*Math.PI),a.fill(),a.strokeStyle="#818cf8",a.lineWidth=2,a.stroke(),a.fillStyle="#1e293b",a.font="bold 11px sans-serif",a.fillText(t.v.toFixed(1),t.x-8,t.y-10),a.fillStyle="#64748b",a.font="10px sans-serif",a.fillText(t[e],t.x-22,i-10)}))}}}));
-
-// ============================================================================
-// TU FUNCIÓN DE INICIALIZACIÓN ULTRA OPTIMIZADA
-// ============================================================================
-let graficoInstancia = null;
-
-function inicializarGrafico(etiquetas, valores) {
-    // 1. Validamos la existencia del canvas en la pantalla
-    const canvas = document.getElementById('graficoHemoglobina');
-    if (!canvas) return;
-
-    // 2. Instanciamos el motor embebido local que no consume recursos de internet
-    if (!graficoInstancia) {
-        graficoInstancia = new Chart('graficoHemoglobina');
+!function (t, e) { "object" == typeof exports && "undefined" != typeof module ? module.exports = e() : "function" == typeof define && define.amd ? define(e) : (t = "undefined" != typeof globalThis ? globalThis : t || self).Chart = e() }(this, (function () {
+    "use strict"; return function (t, e) {// Minichart Core para inyección directa en DOM local sin consumo de CPU
+        var n = this; n.id = t, n.canvas = document.getElementById(t), n.ctx = n.canvas ? n.canvas.getContext("2d") : null, n.render = function (t, e) { if (!n.ctx) return; var o = n.canvas.getBoundingClientRect(); n.canvas.width = o.width, n.canvas.height = 320; var a = n.ctx, c = o.width, i = 320, r = 50, d = 30, s = c - 70, u = 250; a.clearRect(0, 0, c, i), a.strokeStyle = "#f1f5f9", a.lineWidth = 1, a.font = "11px sans-serif", a.fillStyle = "#64748b"; for (var l = 0; l <= 4; l++) { var f = 8 + 2.5 * l, g = d + u - (f - 8) / 10 * u; a.beginPath(), a.moveTo(r, g), a.lineTo(c - 20, g), a.stroke(), a.fillText(f.toFixed(1), 10, g + 4) } var v = e.map((function (t, e) { return { x: r + (e / (o.length - 1 || 1)) * s, y: d + u - (t - 8) / 10 * u, v: t } })); a.beginPath(), a.strokeStyle = "#818cf8", a.lineWidth = 3, a.lineJoin = "round", v.forEach((function (t, e) { 0 === e ? a.moveTo(t.x, t.y) : a.lineTo(t.x, t.y) })), a.stroke(), v.forEach((function (t, e) { a.beginPath(), a.fillStyle = "#ffffff", a.arc(t.x, t.y, 5, 0, 2 * Math.PI), a.fill(), a.strokeStyle = "#818cf8", a.lineWidth = 2, a.stroke(), a.fillStyle = "#1e293b", a.font = "bold 11px sans-serif", a.fillText(t.v.toFixed(1), t.x - 8, t.y - 10), a.fillStyle = "#64748b", a.font = "10px sans-serif", a.fillText(t[e], t.x - 22, i - 10) })) }
     }
-
-    // 3. Dibujamos las líneas con aceleración por hardware nativa
-    graficoInstancia.render(etiquetas, valores);
-}
+}));
 
 
 // ========================================================
@@ -258,10 +406,10 @@ function descargarReportePDF() {
 
     registrosOrdenTemporal.forEach((r, idx) => {
         const valor = parseFloat(r.valorHemoglobina || r.ValorHemoglobina || 0);
-        
+
         let diagnostico = "Normal (Estable)";
         let claseColor = "color: #27ae60;"; // Verde para estable
-        
+
         if (valor < 12) {
             diagnostico = "Alerta de Anemia";
             claseColor = "color: #c0392b; font-weight: bold;"; // Rojo para alerta
@@ -366,53 +514,53 @@ function iniciarVinculacionManual() {
         alert("Por favor, ingrese un código identificador válido.");
         return;
     }
- 
+
     document.getElementById("inputSection").style.display = "none";
     const loader = document.getElementById("loaderSection");
     const titulo = document.getElementById("modalTitulo");
     const mensaje = document.getElementById("modalMensaje");
     const loaderTexto = document.getElementById("loaderTexto");
- 
+
     loader.style.display = "flex";
     document.getElementById("iconoCarga").style.display = "block";
     titulo.innerText = "Estableciendo Enlace";
     mensaje.innerText = `Buscando canal activo para el sensor: ${sensorId}...`;
- 
+
     setTimeout(() => {
         // REQUISITO EXACTO 1: Mensaje de vinculación exitosa
         loaderTexto.innerText = "Vinculación completa, porfavor utilice el dispositivo";
         mensaje.innerText = "Sincronización establecida. Realice la toma física de la muestra con el lector de hardware.";
- 
+
         escucharCambiosFirebase(sensorId);
     }, 3000);
 }
- 
+
 function escucharCambiosFirebase(sensorId) {
     const mensaje = document.getElementById("modalMensaje");
     const loaderTexto = document.getElementById("loaderTexto");
- 
+
     // 1. MODIFICADO: Ahora apunta dinámicamente al nodo de la MAC (sensorId)
     // Se remueven posibles dos puntos ':' por si el usuario los digita
     const macLimpia = sensorId.replace(/:/g, "");
     const firebaseNodoUrl = `${FIREBASE_URL}dispositivos_activos/${macLimpia}.json?nocache=${Date.now()}`;
- 
+
     // Configurar bucle de consulta activa (Polling) cada 2 segundos a Firebase
     const vigilanteIntervalo = setInterval(async () => {
         try {
             const respuestaFirebase = await fetch(firebaseNodoUrl, { method: "GET" });
- 
+
             if (respuestaFirebase.ok) {
                 const datosHardwareReal = await respuestaFirebase.json();
                 console.log("lsamdlma")
                 // EVALUACIÓN DATOS REALES: Validamos que el nodo contenga el estado "Exito" que envía tu ESP32
                 if (datosHardwareReal && datosHardwareReal.mensaje === "Exito") {
- 
+
                     // Detener la escucha activa de red de inmediato al capturar el evento
                     clearInterval(vigilanteIntervalo);
- 
+
                     // REQUISITO EXACTO 2: Mensaje de análisis finalizado
                     loaderTexto.innerText = "Analisis terminado";
- 
+
                     // Mapear adaptando las propiedades del JSON real de tu ESP32 al formato temporal de tu app
                     datosMedicionTemporal = {
                         valor_hemoglobina: parseFloat(datosHardwareReal.hemoglobina), // Accede a "hemoglobina" de tu ESP32
@@ -421,7 +569,7 @@ function escucharCambiosFirebase(sensorId) {
                         timestamp: datosHardwareReal.timestamp || Math.floor(Date.now() / 1000) // Fallback si no viene timestamp del hardware
                     };
                     console.log(datosMedicionTemporal);
- 
+
                     // 2. MODIFICADO: Petición DELETE para eliminar el nodo de la MAC de inmediato y dejarlo limpio
                     try {
                         await fetch(firebaseNodoUrl, { method: "DELETE" });
@@ -429,7 +577,7 @@ function escucharCambiosFirebase(sensorId) {
                     } catch (errorDelete) {
                         console.error("Error al intentar limpiar el nodo en Firebase:", errorDelete);
                     }
- 
+
                     // Pintar los valores REALES capturados de la nube dentro de la interfaz del modal
                     mensaje.innerHTML = `
 <div style="text-align: left; background: #f8fafc; padding: 14px; border-radius: 10px; border: 1px solid #e2e8f0; margin-top: 10px;">
@@ -439,7 +587,7 @@ function escucharCambiosFirebase(sensorId) {
 </div>
 <p style="margin-top: 15px; font-weight: 600; color: var(--text-main);">Confirme la veracidad de la muestra para guardar de manera definitiva.</p>
                     `;
- 
+
                     // Habilitar el paso de confirmación manual explícito para evitar fallas
                     document.getElementById("iconoCarga").style.display = "none";
                     document.getElementById("btnGuardarSQL").style.display = "block";
@@ -449,7 +597,7 @@ function escucharCambiosFirebase(sensorId) {
             console.error("Falla de comunicación con el REST de Firebase:", error);
         }
     }, 2000);
- 
+
     // Cancelar la búsqueda de forma segura a los 60 segundos si el hardware no responde
     setTimeout(() => {
         if (typeof datosMedicionTemporal === 'undefined' || !datosMedicionTemporal) {
@@ -461,18 +609,18 @@ function escucharCambiosFirebase(sensorId) {
     }, 60000);
 }
 
- 
+
 async function iniciarVinculacionManual() {
     const sensorId = document.getElementById("txtSensorId").value.trim();
     if (!sensorId) {
         alert("Por favor, ingrese un código identificador válido.");
         return;
     }
- 
+
     // 1. RESTRICCIÓN: Construir la URL de verificación para ver si el nodo ya existe
     const macLimpia = sensorId.replace(/:/g, "");
     const urlVerificacion = `${FIREBASE_URL}dispositivos_activos/${macLimpia}.json?nocache=${Date.now()}`;
- 
+
     try {
         // Hacemos una consulta rápida de lectura
         const verificarNodo = await fetch(urlVerificacion, { method: "GET" });
@@ -489,23 +637,23 @@ async function iniciarVinculacionManual() {
         alert("Hubo un error de conexión al verificar el estado del dispositivo.");
         return;
     }
- 
+
     // 2. FLUJO NORMAL: Si pasó la verificación (el nodo está vacío/null), procedemos con el diseño y la escucha
     document.getElementById("inputSection").style.display = "none";
     const loader = document.getElementById("loaderSection");
     const titulo = document.getElementById("modalTitulo");
     const mensaje = document.getElementById("modalMensaje");
     const loaderTexto = document.getElementById("loaderTexto");
- 
+
     loader.style.display = "flex";
     document.getElementById("iconoCarga").style.display = "block";
     titulo.innerText = "Estableciendo Enlace";
     mensaje.innerText = `Buscando canal activo para el sensor: ${sensorId}...`;
- 
+
     setTimeout(() => {
         loaderTexto.innerText = "Vinculación completa, porfavor utilice el dispositivo";
         mensaje.innerText = "Sincronización establecida. Realice la toma física de la muestra con el lector de hardware.";
- 
+
         escucharCambiosFirebase(sensorId);
     }, 3000);
 }
