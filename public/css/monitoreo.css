@@ -1,3 +1,6 @@
+/* =========================================================================
+   🎨 VARIABLES GLOBALES Y CONFIGURACIÓN BASE
+   ========================================================================= */
 :root {
   --bg-gradient: linear-gradient(-45deg, #0f172a, #1e293b, #1e3a8a, #0f172a);
   --card-bg: rgba(255, 255, 255, 0.96);
@@ -21,7 +24,7 @@
 }
 
 body {
-  height: 100vh; 
+  min-height: 100vh; 
   display: flex; 
   justify-content: center; 
   align-items: center;
@@ -29,6 +32,7 @@ body {
   background-size: 400% 400%;
   animation: gradientBG 15s ease infinite; 
   padding: 20px;
+  overflow-y: auto; 
 }
 
 @keyframes gradientBG {
@@ -37,29 +41,85 @@ body {
   100% { background-position: 0% 50%; }
 }
 
+/* =========================================================================
+   📦 CONTENEDOR GENERAL Y ESTRUCTURACIÓN DE SECCIONES (CON SCROLL INJECTED)
+   ========================================================================= */
 .container {
   display: flex; 
   width: 100%; 
   max-width: 1050px;
+  height: 90vh; /* Altura máxima controlada para el panel en computadoras */
   background: var(--card-bg); 
   border-radius: 20px;
   box-shadow: 0 20px 40px rgba(0, 0, 0, 0.3); 
   overflow: hidden;
 }
 
-@media (max-width: 768px) {
-  .container { flex-direction: column; }
-  .left-section { border-right: none !important; border-bottom: 2px solid #e2e8f0; }
+/* 🧠 CORREGIDO: Scrollbar interna independiente para que nunca se oculten tus botones */
+.left-section { 
+  flex: 1; 
+  border-right: 2px solid #e2e8f0; 
+  display: flex; 
+  flex-direction: column; 
+  justify-content: flex-start; 
+  gap: 20px; 
+  padding: 30px; 
+  height: 100%;
+  overflow-y: auto; 
 }
 
-.left-section, .right-section { padding: 40px; }
-.left-section { flex: 1; border-right: 2px solid #e2e8f0; display: flex; flex-direction: column; justify-content: space-between; gap: 20px; }
-.right-section { flex: 1.4; display: flex; flex-direction: column; justify-content: center; }
+.right-section { 
+  flex: 1.4; 
+  display: flex; 
+  flex-direction: column; 
+  justify-content: flex-start; 
+  padding: 40px;
+  height: 100%;
+  overflow-y: auto; 
+  gap: 24px;
+}
 
+/* --- DISEÑO RESPONSIVO PARA PANTALLAS MÓVILES --- */
+@media (max-width: 768px) {
+  .container { 
+    flex-direction: column; 
+    height: auto; 
+    max-height: none; 
+  }
+  .left-section, .right-section { 
+    height: auto; 
+    overflow-y: visible; 
+    padding: 20px;
+  }
+  .left-section { 
+    border-right: none !important; 
+    border-bottom: 2px solid #e2e8f0; 
+  }
+}
+
+/* --- ESTILIZADO ELEGANTE DE LAS BARRAS DE SCROLL --- */
+.left-section::-webkit-scrollbar,
+.right-section::-webkit-scrollbar,
+.contenedor-ia-reporte::-webkit-scrollbar {
+  width: 6px;
+}
+.left-section::-webkit-scrollbar-thumb,
+.right-section::-webkit-scrollbar-thumb,
+.contenedor-ia-reporte::-webkit-scrollbar-thumb {
+  background-color: #cbd5e1;
+  border-radius: 10px;
+}
+
+/* =========================================================================
+   📝 TIPOGRAFÍAS Y ENCABEZADOS
+   ========================================================================= */
 h1 { font-size: 24px; color: #1e3a8a; font-weight: 800; margin-bottom: 4px; }
 .subtitle { font-size: 13px; color: var(--text-muted); margin-bottom: 24px; text-transform: uppercase; letter-spacing: 0.5px; }
 h3 { font-size: 16px; font-weight: 700; color: var(--text-main); margin-bottom: 12px; }
 
+/* =========================================================================
+   📇 TARJETAS DE INFORMACIÓN Y ESTADOS CLÍNICOS
+   ========================================================================= */
 .paciente-info { background: #f8fafc; padding: 24px; border-radius: 14px; border: 1px solid #e2e8f0; }
 .paciente-info p { margin: 10px 0; font-size: 14px; color: var(--text-main); }
 
@@ -68,7 +128,10 @@ h3 { font-size: 16px; font-weight: 700; color: var(--text-main); margin-bottom: 
 .estado.anemia { background: #fef2f2; color: #ef4444; border-color: #fca5a5; }
 .estado.poliglobulia { background: #fffbeb; color: #d97706; border-color: #fef3c7; }
 
-.btn-group { display: flex; flex-direction: column; gap: 12px; }
+/* =========================================================================
+   🔘 BOTONES Y GRUPOS DE ACCIONES
+   ========================================================================= */
+.btn-group { display: flex; flex-direction: column; gap: 12px; width: 100%; margin-top: auto; }
 .btn { width: 100%; padding: 14px; border: none; border-radius: 10px; font-size: 14px; font-weight: 700; cursor: pointer; transition: all 0.2s ease; display: flex; align-items: center; justify-content: center; gap: 8px; }
 
 .btn-analisis { background-color: var(--success); color: #fff; }
@@ -78,9 +141,14 @@ h3 { font-size: 16px; font-weight: 700; color: var(--text-main); margin-bottom: 
 .btn-logout { background-color: #fff; color: var(--danger); border: 1px solid #fee2e2; }
 .btn-logout:hover { background-color: var(--danger); color: #fff; border-color: var(--danger); }
 
-.chart-container { position: relative; background: #ffffff; padding: 20px; border-radius: 14px; border: 1px solid #e2e8f0; box-shadow: 0 4px 12px rgba(0,0,0,0.03); height: 320px; width: 100%; }
+/* =========================================================================
+   📊 CONTENEDORES DE GRÁFICOS (CHART.JS)
+   ========================================================================= */
+.chart-container { position: relative; background: #ffffff; padding: 20px; border-radius: 14px; border: 1px solid #e2e8f0; box-shadow: 0 4px 12px rgba(0,0,0,0.03); height: 320px; width: 100%; flex-shrink: 0; }
 
-/* --- MODAL DE VINCULACIÓN MANUAL --- */
+/* =========================================================================
+   🔒 MODAL DE VINCULACIÓN MANUAL Y SPINNERS
+   ========================================================================= */
 .modal-overlay {
   position: fixed; top: 0; left: 0; width: 100%; height: 100%;
   background: rgba(15, 23, 42, 0.8); display: flex; align-items: center; justify-content: center;
@@ -112,43 +180,63 @@ h3 { font-size: 16px; font-weight: 700; color: var(--text-main); margin-bottom: 
 .btn-close-modal { background: none; border: none; color: var(--text-muted); font-size: 22px; position: absolute; top: 15px; right: 20px; cursor: pointer; }
 .btn-close-modal:hover { color: var(--danger); }
 
-    .contenedor-ia-reporte {
-      margin-top: 20px;
-      padding: 15px;
-      border-radius: 8px;
-      background-color: #f8f9fa;
-      border-left: 5px solid #17a2b8;
-      box-shadow: 0 2px 4px rgba(0,0,0,0.05);
-    }
-    .titulo-ia {
-      margin: 0 0 10px 0;
-      color: #17a2b8;
-      font-size: 16px;
-      font-weight: 700;
-      display: flex;
-      align-items: center;
-      gap: 6px;
-    }
-    .texto-alerta-ia {
-      font-size: 14px;
-      line-height: 1.5;
-      color: #333;
-      margin-bottom: 12px;
-    }
-    .subtitulo-ia {
-      margin: 10px 0 6px 0;
-      color: #495057;
-      font-size: 14px;
-      font-weight: 600;
-    }
-    .lista-ia {
-      margin: 0;
-      padding-left: 20px;
-      font-size: 13.5px;
-      color: #495057;
-      list-style-type: none; 
-    }
-    .item-recomendacion-ia {
-      margin-bottom: 6px;
-      line-height: 1.4;
-    }
+/* =========================================================================
+   🧠 COMPONENTE DE DIAGNÓSTICO WALLE-HB (DISEÑO DE TARJETA CON SCROLL INTERNO)
+   ========================================================================= */
+.contenedor-ia-reporte {
+  margin-top: 10px;
+  padding: 20px;
+  border-radius: 14px;
+  background: #ffffff; /* Fondo blanco puro tipo tarjeta */
+  border: 1px solid #e2e8f0; 
+  border-left: 5px solid #0284c7; /* Línea distintiva lateral */
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.03); 
+  
+  /* Altura ideal para la tarjeta con barra de desplazamiento independiente */
+  max-height: 260px; 
+  overflow-y: auto; 
+  flex-shrink: 0;
+}
+
+.titulo-ia {
+  margin: 0 0 12px 0;
+  color: #1e3a8a; /* Color azul institucional */
+  font-size: 15px;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  position: sticky; 
+  top: 0;
+  background: #ffffff;
+  padding-bottom: 6px;
+  border-bottom: 1px solid #f1f5f9;
+  z-index: 10;
+}
+
+.texto-alerta-ia {
+  font-size: 13.5px;
+  line-height: 1.5;
+  color: var(--text-main);
+  margin-bottom: 12px;
+}
+
+.subtitulo-ia {
+  margin: 14px 0 6px 0;
+  color: #1e3a8a;
+  font-size: 13.5px;
+  font-weight: 700;
+}
+
+.lista-ia {
+  margin: 0;
+  padding-left: 18px;
+  font-size: 13px;
+  color: var(--text-muted);
+  list-style-type: disc;
+}
+
+.item-recommendacion-ia {
+  margin-bottom: 6px;
+  line-height: 1.4;
+}

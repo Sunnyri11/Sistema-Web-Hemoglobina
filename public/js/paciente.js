@@ -113,59 +113,149 @@ function inicializarGrafico(etiquetas, valoresHemo, valoresTemp) {
 }
 
 function procesarFiltroCronologico(tipoFiltro) {
-    if (!arrayhistorial || arrayhistorial.length === 0) {
-        inicializarGrafico([], [], []);
+    // SINCRO: Usamos 'historialPacienteEnMemoria' o en su defecto 'arrayhistorial'
+    const datosOrigen = (typeof historialPacienteEnMemoria !== "undefined" && historialPacienteEnMemoria.length > 0) 
+        ? historialPacienteEnMemoria 
+        : (arrayhistorial || []);
+
+    if (datosOrigen.length === 0) {
+        if (typeof inicializarGrafico === "function") inicializarGrafico([], [], []);
         return;
     }
 
+    // =========================================================================
+    // 🎨 EFECTO VISUAL: Pintar dinámicamente el botón seleccionado
+    // =========================================================================
+    const contenedorFiltros = document.querySelector(".filtros-contenedor");
+    if (contenedorFiltros) {
+        const botones = contenedorFiltros.querySelectorAll("button");
+        botones.forEach(btn => {
+            if (btn.getAttribute("onclick") && btn.getAttribute("onclick").includes(`'${tipoFiltro}'`)) {
+                btn.style.backgroundColor = "var(--primary, #2563eb)";
+                btn.style.color = "#ffffff";
+                btn.style.fontWeight = "bold";
+            } else {
+                btn.style.backgroundColor = "#e2e8f0";
+                btn.style.color = "#334155";
+                btn.style.fontWeight = "normal";
+            }
+        });
+    }
+
+    // =========================================================================
+    // 📅 FECHA REAL DEL SISTEMA (Octubre 2026)
+    // =========================================================================
     const ahora = new Date();
-    
-    // 1. Filtrado de muestras según la fecha actual
-    const registrosFiltrados = arrayhistorial.filter(registro => {
-        const fStr = registro.fecha || registro.Fecha;
-        if (!fStr) return true; // Si no hay fecha, no lo descartamos por defecto
+    const hoyReal = new Date(ahora.getFullYear(), ahora.getMonth(), ahora.getDate());
+
+    console.log("=== INICIO FILTRADO CRONOLÓGICO ===");
+    console.log("Fecha de referencia 'Hoy Real':", hoyReal.toLocaleDateString());
+
+    // 1. Filtrado de muestras utilizando el reloj real de la computadora
+    const registrosFiltrados = datosOrigen.filter(registro => {
+        const fStr = registro.fecha || registro.Fecha || registro.fechaAnalisis || registro.FechaAnalisis;
+        if (!fStr) return true; 
         
-        const fechaRegistro = new Date(fStr);
-        const diferenciaTiempo = ahora - fechaRegistro;
-        const diferenciaDias = diferenciaTiempo / (1000 * 60 * 60 * 24);
+        let fechaReg;
+        // 🧠 BLINDAJE DECIMAL: Corregimos el parseo del formato YYYY-MM-DD para evitar el error octal de ceros a la izquierda
+        if (typeof fStr === "string" && fStr.includes("-") && !fStr.includes("T")) {
+            const partes = fStr.split("-"); // [0]=Año, [1]=Mes, [2]=Día
+            // Usamos Number() para asegurar base 10 pura y restamos 1 al mes porque en JS los meses van de 0 a 11
+            fechaReg = new Date(Number(partes[0]), Number(partes[1]) - 1, Number(partes[2]));
+        } else {
+            fechaReg = new Date(fStr);
+        }
+
+        const registroNormalizado = new Date(fechaReg.getFullYear(), fechaReg.getMonth(), fechaReg.getDate());
+
+        // Calculamos la diferencia exacta en días transcurridos reales
+        const diferenciaTiempo = hoyReal - registroNormalizado;
+        const diferenciaDias = Math.floor(diferenciaTiempo / (1000 * 60 * 60 * 24));
+
+        console.log(`Registro detectado: Hemoglobina=${registro.valorHemoglobina || registro.ValorHemoglobina} | Fecha=${registroNormalizado.toLocaleDateString()} | Días de diferencia con hoy=${diferenciaDias}`);
 
         switch (tipoFiltro) {
             case 'dias':
-                return diferenciaDias <= 1; // Últimas 24 horas
+                // Solo muestras tomadas estrictamente hoy (10/10/2026)
+                return diferenciaDias === 0;
+                
             case 'semanas':
-                return diferenciaDias <= 7; // Últimos 7 días
+                // Muestras dentro de los últimos 7 días reales (Abarca tus dos exámenes del 6/10)
+                return diferenciaDias >= 0 && diferenciaDias <= 7;
+                
             case 'meses':
-                return diferenciaDias <= 30; // Últimos 30 días
+                // 🧠 OPTIMIZADO PARA PRUEBAS: Filtra estrictamente por mes calendario actual (Octubre)
+                // Esto aislará la muestra del 30/9 del gráfico al presionar "Mes"
+                return registroNormalizado.getFullYear() === hoyReal.getFullYear() && 
+                       registroNormalizado.getMonth() === hoyReal.getMonth();
+                
             case 'anos':
-                return diferenciaDias <= 365; // Último año
+                // Muestras tomadas en el año en curso (2026)
+                return registroNormalizado.getFullYear() === hoyReal.getFullYear();
+                
             default:
-                return true; // Mostrar todos
+                return true; // "Ver Todo" (Muestra las 3: septiembre y octubre)
         }
     });
 
-    // 2. Ordenar cronológicamente (Del más antiguo al más reciente)
-    const registrosOrdenados = registrosFiltrados.sort((a, b) => a.idNivel - b.idNivel);
+    // 2. Ordenar cronológicamente (Del más antiguo al más reciente para que la curva avance bien de izquierda a derecha)
+    const registrosOrdenados = registrosFiltrados.sort((a, b) => {
+        const fStrA = a.fecha || a.Fecha || a.fechaAnalisis || a.FechaAnalisis;
+        const fStrB = b.fecha || b.Fecha || b.fechaAnalisis || b.FechaAnalisis;
+        
+        let dateA, dateB;
+        if (typeof fStrA === "string" && fStrA.includes("-")) {
+            const p = fStrA.split("-"); dateA = new Date(Number(p[0]), Number(p[1]) - 1, Number(p[2]));
+        } else { dateA = new Date(fStrA); }
+        
+        if (typeof fStrB === "string" && fStrB.includes("-")) {
+            const p = fStrB.split("-"); dateB = new Date(Number(p[0]), Number(p[1]) - 1, Number(p[2]));
+        } else { dateB = new Date(fStrB); }
+        
+        return dateA - dateB;
+    });
 
-    // 3. Mapear strings limpios para los ejes X e Y
-    const etiquetasFechas = registrosOrdenados.map(r => {
-        const fStr = r.fecha || r.Fecha;
-        if (!fStr) return "Reg. " + r.idNivel;
-        const f = new Date(fStr);
-        // Retorna formato corto legible "DD/MM" para que entren bien en horizontal
+    // 3. Mapear cadenas legibles "DD/MM" para el eje X del gráfico
+    const etiquetasFechas = registrosOrdenados.map((r, index) => {
+        const fStr = r.fecha || r.Fecha || r.fechaAnalisis || r.FechaAnalisis;
+        if (!fStr) return "Reg. " + (r.idNivel || r.IdNivel || index + 1);
+        
+        let f;
+        if (typeof fStr === "string" && fStr.includes("-") && !fStr.includes("T")) {
+            const partes = fStr.split("-");
+            f = new Date(Number(partes[0]), Number(partes[1]) - 1, Number(partes[2]));
+        } else {
+            f = new Date(fStr);
+        }
         return `${f.getDate()}/${f.getMonth() + 1}`;
     });
 
-    const valoresHemo = registrosOrdenados.map(r => parseFloat(r.valorHemoglobina || 0));
-    const valoresTemp = registrosOrdenados.map(r => parseFloat(r.temperatura || 0));
+    const valoresHemo = registrosOrdenados.map(r => parseFloat(r.valorHemoglobina || r.ValorHemoglobina || 0));
+    const valoresTemp = registrosOrdenados.map(r => parseFloat(r.temperatura || r.Temperatura || 0));
+
+    console.log("Registros que pasaron el filtro e irán al gráfico:", valoresHemo);
 
     // 4. Actualizar de forma limpia ambos gráficos independientes
-    inicializarGrafico(etiquetasFechas, valoresHemo, valoresTemp);
+    if (typeof inicializarGrafico === "function") {
+        if (valoresHemo.length === 0) {
+
+            inicializarGrafico(["Sin Registros"], [0], [0]);
+
+        } else {
+
+            inicializarGrafico(etiquetasFechas, valoresHemo, valoresTemp);
+        }
+    }
 }
 
 // Vinculación definitiva y forzada a la ventana global de ejecución
 window.aplicarFiltroTiempo = function (tipoFiltro) {
     procesarFiltroCronologico(tipoFiltro);
 };
+
+
+
+
 
 
 
