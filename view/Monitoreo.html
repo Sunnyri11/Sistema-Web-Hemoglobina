@@ -23,9 +23,7 @@
         </div>
       </div>
 
-      <!-- =========================================================================
-           🧠 CONTENEDOR DINÁMICO DE INTELIGENCIA ARTIFICIAL (WALLE-HB)
-           ========================================================================= -->
+
       <div id="alertasWalleHB" class="contenedor-ia-reporte" style="display: none;">
         <h4 class="titulo-ia">🤖 Diagnóstico Evolutivo de Walle-HB</h4>
         <p id="textoAlertaWalleHB" class="texto-alerta-ia"></p>
@@ -53,26 +51,40 @@
 
     <div class="right-section">
 
-      <div class="filtros-contenedor" style="margin-bottom: 25px; padding: 10px; background: #fff; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.02);">
-        <span style="font-weight: 700; color: #1e293b; display: block; margin-bottom: 10px; font-size: 14px;">Filtrar historial por tiempo:</span>
+      <div class="filtros-contenedor"
+        style="margin-bottom: 25px; padding: 10px; background: #fff; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.02);">
+        <span style="font-weight: 700; color: #1e293b; display: block; margin-bottom: 10px; font-size: 14px;">Filtrar
+          historial por tiempo:</span>
         <div style="display: flex; gap: 8px; flex-wrap: wrap;">
-          <button class="btn" style="background-color: #e2e8f0; color: #334155; padding: 8px 16px; min-width: auto; font-size: 13px;" onclick="aplicarFiltroTiempo('dias')">Hoy</button>
-          <button class="btn" style="background-color: #e2e8f0; color: #334155; padding: 8px 16px; min-width: auto; font-size: 13px;" onclick="aplicarFiltroTiempo('semanas')">7 Días</button>
-          <button class="btn" style="background-color: #e2e8f0; color: #334155; padding: 8px 16px; min-width: auto; font-size: 13px;" onclick="aplicarFiltroTiempo('meses')">Mes</button>
-          <button class="btn" style="background-color: #e2e8f0; color: #334155; padding: 8px 16px; min-width: auto; font-size: 13px;" onclick="aplicarFiltroTiempo('anos')">Año</button>
-          <button class="btn" style="background-color: var(--primary, #818cf8); color: #fff; padding: 8px 16px; min-width: auto; font-size: 13px; font-weight: bold;" onclick="aplicarFiltroTiempo('todos')">Ver Todo</button>
+          <button class="btn"
+            style="background-color: #e2e8f0; color: #334155; padding: 8px 16px; min-width: auto; font-size: 13px;"
+            onclick="aplicarFiltroTiempo('dias')">Hoy</button>
+          <button class="btn"
+            style="background-color: #e2e8f0; color: #334155; padding: 8px 16px; min-width: auto; font-size: 13px;"
+            onclick="aplicarFiltroTiempo('semanas')">7 Días</button>
+          <button class="btn"
+            style="background-color: #e2e8f0; color: #334155; padding: 8px 16px; min-width: auto; font-size: 13px;"
+            onclick="aplicarFiltroTiempo('meses')">Mes</button>
+          <button class="btn"
+            style="background-color: #e2e8f0; color: #334155; padding: 8px 16px; min-width: auto; font-size: 13px;"
+            onclick="aplicarFiltroTiempo('anos')">Año</button>
+          <button class="btn"
+            style="background-color: var(--primary, #818cf8); color: #fff; padding: 8px 16px; min-width: auto; font-size: 13px; font-weight: bold;"
+            onclick="aplicarFiltroTiempo('todos')">Ver Todo</button>
         </div>
       </div>
 
       <!-- Gráfico de Hemoglobina -->
       <h3 style="margin-top: 15px; margin-bottom: 10px;">Evolución de Niveles de Hemoglobina</h3>
-      <div class="chart-container" style="position: relative; height:240px; width:100%; margin-bottom: 35px; background: #fff; border-radius: 8px; padding: 10px;">
+      <div class="chart-container"
+        style="position: relative; height:240px; width:100%; margin-bottom: 35px; background: #fff; border-radius: 8px; padding: 10px;">
         <canvas id="graficoHemoglobina"></canvas>
       </div>
 
       <!-- Gráfico de Temperatura -->
       <h3 style="margin-bottom: 10px;">Evolución de Temperatura</h3>
-      <div class="chart-container" style="position: relative; height:240px; width:100%; background: #fff; border-radius: 8px; padding: 10px;">
+      <div class="chart-container"
+        style="position: relative; height:240px; width:100%; background: #fff; border-radius: 8px; padding: 10px;">
         <canvas id="graficoTemperatura"></canvas>
       </div>
     </div>
@@ -86,27 +98,46 @@
         <p id="modalMensaje">Por favor, ingrese manualmente el código identificador de su sensor biométrico para
           iniciar.</p>
 
-        <div id="inputSection">
+        <!-- Sección de Entradas Principales -->
+        <div id="inputSection" style="display: flex; flex-direction: column; gap: 15px; width: 85%; margin: 0 auto;">
+
           <input type="text" id="txtSensorId" class="input-codigo" placeholder="Escriba el código del sensor..."
-            autocomplete="off">
-          <button class="btn btn-analisis" style="background-color: var(--primary);"
+            autocomplete="off" style="width: 100%;">
+
+          <!-- NUEVO: Selector de condiciones médicas, siempre estructurado y alineado con tus estilos -->
+          <div id="selectObservacionSection" style="text-align: left; width: 100%;">
+            <label for="cboObservaciones"
+              style="font-weight: 600; font-size: 14px; color: #555; display: block; margin-bottom: 6px;">
+              🩺 Condición Médica / Observación:
+            </label>
+            <select id="cboObservaciones" class="input-codigo"
+              style="width: 100%; height: 42px; font-size: 15px; padding: 5px 12px; border: 1px solid #ccc; border-radius: 8px; background-color: #fff;">
+              <!-- Se carga dinámicamente mediante JS -->
+            </select>
+          </div>
+
+          <button class="btn btn-analisis" style="background-color: var(--primary); width: 100%;"
             onclick="iniciarVinculacionManual()">
             Vincular Código
           </button>
         </div>
 
-        <div id="loaderSection" class="spinner-box">
-          <div class="spinner" id="iconoCarga"></div>
-          <h4 id="loaderTexto" style="color: var(--primary); font-weight: 700; margin-bottom: 12px;">Conectando...</h4>
+        <!-- Sección de Carga y Guardado Final -->
+        <div id="loaderSection" class="spinner-box" style="margin-top: 15px;">
+          <div class="spinner" id="iconoCarga" style="display: none;"></div>
+          <h4 id="loaderTexto" style="color: var(--primary); font-weight: 700; margin-bottom: 12px; display: none;">
+            Conectando...</h4>
 
           <button id="btnGuardarSQL" class="btn"
-            style="background-color: var(--success); color: #fff; display: none; width: 80%; margin: 10px auto 0 auto;"
+            style="background-color: var(--success); color: #fff; display: none; width: 85%; margin: 10px auto 0 auto;"
             onclick="ejecutarGuardadoDefinitivo()">
             Guardar Análisis
           </button>
         </div>
       </div>
     </div>
+
+
 
     <!-- CDN para bibliotecas externas -->
     <script src="https://cloudflare.com"></script>

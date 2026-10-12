@@ -1,11 +1,11 @@
-var arrayhistorial = []; 
+var arrayhistorial = [];
 let chartHemo = null;
 let datosMedicionTemporal = null;
 let historialPacienteEnMemoria = [];
 let nombrePacienteEnMemoria = "Paciente";
 var datospaciente = {};
-let graficoInstancia = null; 
-
+let graficoInstancia = null;
+let idObservacionSeleccionada = 0;
 
 // Instancias independientes para los dos lienzos gráficos
 let graficoHemoInstancia = null;
@@ -17,12 +17,12 @@ function MiniChartSingleLine(canvasId, minVal, maxVal, color, esTemp) {
     n.canvas = document.getElementById(canvasId);
     n.ctx = n.canvas ? n.canvas.getContext("2d") : null;
 
-    n.render = function(etiquetas, datos) {
+    n.render = function (etiquetas, datos) {
         if (!n.ctx || !n.canvas || datos.length === 0) return;
         var o = n.canvas.getBoundingClientRect();
         n.canvas.width = o.width;
-        n.canvas.height = 240; 
-        
+        n.canvas.height = 240;
+
         var a = n.ctx, c = o.width, i = 240;
         var r = 50, d = 30, s = c - 90, u = 150;
 
@@ -32,7 +32,7 @@ function MiniChartSingleLine(canvasId, minVal, maxVal, color, esTemp) {
         a.strokeStyle = "#f1f5f9";
         a.lineWidth = 1;
         a.font = "11px sans-serif";
-        
+
         var rango = maxVal - minVal;
         for (var l = 0; l <= 4; l++) {
             var f = minVal + (rango / 4) * l;
@@ -41,13 +41,13 @@ function MiniChartSingleLine(canvasId, minVal, maxVal, color, esTemp) {
             a.moveTo(r, g);
             a.lineTo(c - 40, g);
             a.stroke();
-            
+
             a.fillStyle = "#64748b";
             a.fillText(f.toFixed(1), 10, g + 4);
         }
 
         var totalPuntos = datos.length;
-        var puntos = datos.map(function(val, idx) {
+        var puntos = datos.map(function (val, idx) {
             var posX = r + (totalPuntos > 1 ? (idx / (totalPuntos - 1)) * s : s / 2);
             var posY = d + u - ((val - minVal) / rango) * u;
             return { x: posX, y: posY, v: val };
@@ -58,14 +58,14 @@ function MiniChartSingleLine(canvasId, minVal, maxVal, color, esTemp) {
         a.strokeStyle = color;
         a.lineWidth = 3;
         a.lineJoin = "round";
-        puntos.forEach(function(p, idx) {
+        puntos.forEach(function (p, idx) {
             if (idx === 0) a.moveTo(p.x, p.y);
             else a.lineTo(p.x, p.y);
         });
         a.stroke();
 
         // Dibujar Nodos y Valores Numéricos
-        puntos.forEach(function(p) {
+        puntos.forEach(function (p) {
             a.beginPath();
             a.fillStyle = "#ffffff";
             a.arc(p.x, p.y, 4, 0, 2 * Math.PI);
@@ -82,18 +82,20 @@ function MiniChartSingleLine(canvasId, minVal, maxVal, color, esTemp) {
         // Eje X - Rótulos de Fechas
         a.fillStyle = "#64748b";
         a.font = "10px sans-serif";
-        etiquetas.forEach(function(fechaStr, idx) {
+        etiquetas.forEach(function (fechaStr, idx) {
             var p = puntos[idx];
             if (p) {
                 a.save();
                 a.translate(p.x, i - 15);
-                a.rotate(-0.15); 
+                a.rotate(-0.15);
                 a.fillText(fechaStr, -20, 10);
                 a.restore();
             }
         });
     };
 }
+
+
 
 // ============================================================================
 // 3. INICIALIZADOR DE GRÁFICOS (REESCRITO SIN REFERENCIAS ADVERSAS)
@@ -114,8 +116,8 @@ function inicializarGrafico(etiquetas, valoresHemo, valoresTemp) {
 
 function procesarFiltroCronologico(tipoFiltro) {
     // SINCRO: Usamos 'historialPacienteEnMemoria' o en su defecto 'arrayhistorial'
-    const datosOrigen = (typeof historialPacienteEnMemoria !== "undefined" && historialPacienteEnMemoria.length > 0) 
-        ? historialPacienteEnMemoria 
+    const datosOrigen = (typeof historialPacienteEnMemoria !== "undefined" && historialPacienteEnMemoria.length > 0)
+        ? historialPacienteEnMemoria
         : (arrayhistorial || []);
 
     if (datosOrigen.length === 0) {
@@ -154,8 +156,8 @@ function procesarFiltroCronologico(tipoFiltro) {
     // 1. Filtrado de muestras utilizando el reloj real de la computadora
     const registrosFiltrados = datosOrigen.filter(registro => {
         const fStr = registro.fecha || registro.Fecha || registro.fechaAnalisis || registro.FechaAnalisis;
-        if (!fStr) return true; 
-        
+        if (!fStr) return true;
+
         let fechaReg;
         // 🧠 BLINDAJE DECIMAL: Corregimos el parseo del formato YYYY-MM-DD para evitar el error octal de ceros a la izquierda
         if (typeof fStr === "string" && fStr.includes("-") && !fStr.includes("T")) {
@@ -178,21 +180,21 @@ function procesarFiltroCronologico(tipoFiltro) {
             case 'dias':
                 // Solo muestras tomadas estrictamente hoy (10/10/2026)
                 return diferenciaDias === 0;
-                
+
             case 'semanas':
                 // Muestras dentro de los últimos 7 días reales (Abarca tus dos exámenes del 6/10)
                 return diferenciaDias >= 0 && diferenciaDias <= 7;
-                
+
             case 'meses':
                 // 🧠 OPTIMIZADO PARA PRUEBAS: Filtra estrictamente por mes calendario actual (Octubre)
                 // Esto aislará la muestra del 30/9 del gráfico al presionar "Mes"
-                return registroNormalizado.getFullYear() === hoyReal.getFullYear() && 
-                       registroNormalizado.getMonth() === hoyReal.getMonth();
-                
+                return registroNormalizado.getFullYear() === hoyReal.getFullYear() &&
+                    registroNormalizado.getMonth() === hoyReal.getMonth();
+
             case 'anos':
                 // Muestras tomadas en el año en curso (2026)
                 return registroNormalizado.getFullYear() === hoyReal.getFullYear();
-                
+
             default:
                 return true; // "Ver Todo" (Muestra las 3: septiembre y octubre)
         }
@@ -202,16 +204,16 @@ function procesarFiltroCronologico(tipoFiltro) {
     const registrosOrdenados = registrosFiltrados.sort((a, b) => {
         const fStrA = a.fecha || a.Fecha || a.fechaAnalisis || a.FechaAnalisis;
         const fStrB = b.fecha || b.Fecha || b.fechaAnalisis || b.FechaAnalisis;
-        
+
         let dateA, dateB;
         if (typeof fStrA === "string" && fStrA.includes("-")) {
             const p = fStrA.split("-"); dateA = new Date(Number(p[0]), Number(p[1]) - 1, Number(p[2]));
         } else { dateA = new Date(fStrA); }
-        
+
         if (typeof fStrB === "string" && fStrB.includes("-")) {
             const p = fStrB.split("-"); dateB = new Date(Number(p[0]), Number(p[1]) - 1, Number(p[2]));
         } else { dateB = new Date(fStrB); }
-        
+
         return dateA - dateB;
     });
 
@@ -219,7 +221,7 @@ function procesarFiltroCronologico(tipoFiltro) {
     const etiquetasFechas = registrosOrdenados.map((r, index) => {
         const fStr = r.fecha || r.Fecha || r.fechaAnalisis || r.FechaAnalisis;
         if (!fStr) return "Reg. " + (r.idNivel || r.IdNivel || index + 1);
-        
+
         let f;
         if (typeof fStr === "string" && fStr.includes("-") && !fStr.includes("T")) {
             const partes = fStr.split("-");
@@ -256,6 +258,44 @@ window.aplicarFiltroTiempo = function (tipoFiltro) {
 
 
 
+async function cargarObservacionesEnSelect() {
+    const cbo = document.getElementById("cboObservaciones");
+    if (!cbo) return; // Validación por si no encuentra el elemento en el DOM
+
+    try {
+        const respuesta = await fetch(`${API_URL}observaciones/observacionesclinicas`, {
+            method: 'GET',
+            headers: {
+                'Authorization': `Bearer ${localStorage.getItem('token')}`,
+                'Content-Type': 'application/json'
+            }
+        });
+
+        if (!respuesta.ok) throw new Error("Error al obtener observaciones.");
+
+        const datos = await respuesta.json();
+
+        // Limpiamos el select y dejamos la opción base por defecto (ID = 0)
+        cbo.innerHTML = '<option value="0">--- Ninguna (Estado de Salud Normal) ---</option>';
+
+        // Iteramos los datos mapeando la estructura interna real
+        datos.forEach(item => {
+            // Accedemos de forma segura tanto si la propiedad viene en minúsculas como en mayúsculas
+            const obs = item.observaciones || item.observacion;
+
+            if (obs) {
+                const option = document.createElement("option");
+                option.value = obs.idObservacion; // Extrae el ID (Ej: 1)
+                option.textContent = obs.observacion; // Extrae el nombre (Ej: 'Embarazo')
+                cbo.appendChild(option);
+            }
+        });
+
+    } catch (error) {
+        console.error("Error poblando el selector:", error);
+        cbo.innerHTML = '<option value="0">Error al cargar observaciones de la BD</option>';
+    }
+}
 
 
 
@@ -276,20 +316,20 @@ document.addEventListener("DOMContentLoaded", async function () {
         window.location.href = "../index.html";
         return;
     }
-    
+
     try {
         // Carga primaria de expediente personal
         await cargarPaciente();
-        
+
         // Peticiones paralelas al servidor central
-        const respuesta = await fetch(`${API_URL}Dashboard/paciente`, { 
+        const respuesta = await fetch(`${API_URL}Dashboard/paciente`, {
             method: "GET",
             headers: {
                 "Authorization": "Bearer " + token.trim(),
                 "Content-Type": "application/json"
             }
         });
-        
+
         const id = localStorage.getItem("usuario_id");
         const respuestahistorial = await fetch(`${API_URL}Paciente/mihistorial/${id}`, {
             method: "GET",
@@ -323,17 +363,18 @@ document.addEventListener("DOMContentLoaded", async function () {
 
             // 📈 Disparador inicial: Renderiza ambos gráficos con la vista 'todos'
             aplicarFiltroTiempo('todos');
-
+            console.log("asdkjasdkjanskdns");
+            console.log(arrayhistorial);
             // Extracción de las últimas métricas para la tarjeta informativa superior
-            const ultimoRegistro = arrayhistorial[arrayhistorial.length - 1] || {};
+            const ultimoRegistro = arrayhistorial[0] || {};
             const ultimaHemoglobina = parseFloat(ultimoRegistro.valorHemoglobina || 0);
             const ultimaTemp = ultimoRegistro.temperatura || "S/D";
-            
+            actualizarEstadoClinico(ultimaHemoglobina);
             // =========================================================================
             // 🧠 INTEGRACIÓN MÓDULO ANALÍTICO EVOLUTIVO DE WALLE-HB
             // =========================================================================
             const iaNode = datos.analisisIA || datos.analisisia;
-            
+
             if (iaNode) {
                 const estadoDiv = document.getElementById("estadoPaciente");
                 if (estadoDiv) {
@@ -353,7 +394,7 @@ document.addEventListener("DOMContentLoaded", async function () {
                 // Renderizado adaptativo de la cadena de alertas del modelo .pkl
                 const alertaTextoDiv = document.getElementById("textoAlertaWalleHB");
                 const divContenedorIa = document.getElementById("alertasWalleHB");
-                
+
                 if (alertaTextoDiv && iaNode.alertas) {
                     let mensajePuro = "";
                     if (Array.isArray(iaNode.alertas) && iaNode.alertas.length > 0) {
@@ -372,11 +413,11 @@ document.addEventListener("DOMContentLoaded", async function () {
                 // Listado secuencial de recomendaciones clínicas sugeridas
                 const listaUl = document.getElementById("listaRecomendacionesWalleHB");
                 if (listaUl && iaNode.recomendaciones) {
-                    listaUl.innerHTML = ""; 
+                    listaUl.innerHTML = "";
                     iaNode.recomendaciones.forEach(rec => {
                         const li = document.createElement("li");
                         li.textContent = rec;
-                        li.className = "item-recommendacion-ia"; 
+                        li.className = "item-recommendacion-ia";
                         listaUl.appendChild(li);
                     });
                 }
@@ -432,7 +473,7 @@ async function cargarPaciente() {
             }
 
             const tipoSangreTexto = tipoSangreObjeto ? (tipoSangreObjeto.tipoDeSangre || tipoSangreObjeto.TipoDeSangre || "No registrado") : "No registrado";
-            const nombrepacientecompleto = paci ? `${paci.Nombre || paci.nombre || ''} ${paci.Apellido || paci.apellido || ''}`.trim() : 'Paciente sin nombre';
+            const nombrepacientecompleto = paci ? `${paci.Nombre || paci.nombre || ''} ${paci.Paterno || paci.paterno || ''} ${paci.Materno || paci.materno || ''}`.trim() : 'Paciente sin nombre';
             const correoTexto = correo ? (correo.CorreoElectronico || correo.correoElectronico || 'Sin correo') : 'Sin correo';
             const departamento = datospaciente.departamento.departamento1;
             const ciudad = datospaciente.ciudad.nombre;
@@ -454,22 +495,70 @@ async function cargarPaciente() {
     catch (error) {
         console.error("Error en la petición fetch de datos personales:", error);
     }
+
 }
 
-function actualizarEstadoClinico(ultimaHemoglobina) {
+async function actualizarEstadoClinico() {
     const estadoDiv = document.getElementById("estadoPaciente");
     if (!estadoDiv) return;
-    if (ultimaHemoglobina < 12) {
-        estadoDiv.textContent = `Estado: Alerta de Anemia (${ultimaHemoglobina} g/dL)`;
-        estadoDiv.className = "estado anemia";
-    } else if (ultimaHemoglobina > 17) {
-        estadoDiv.textContent = `Estado: Alerta de Poliglobulia (${ultimaHemoglobina} g/dL)`;
-        estadoDiv.className = "estado poliglobulia";
-    } else {
-        estadoDiv.textContent = `Estado: Estable (${ultimaHemoglobina} g/dL)`;
-        estadoDiv.className = "estado estable";
+
+    const token = localStorage.getItem("token_seguridad"); 
+    const id = localStorage.getItem("usuario_id");
+
+    try {
+        const respuesta = await fetch(`${API_URL}RangoHemoglobina/mirango/${id}`, {
+            method: 'GET',
+            headers: {
+                'Authorization': `Bearer ${token.trim()}`, 
+                'Content-Type': 'application/json'
+            }
+        });
+
+        if (!respuesta.ok) throw new Error("Error al obtener el historial clínico del paciente.");
+
+        const datos = await respuesta.json();
+
+        if (!datos || datos.length === 0) {
+            estadoDiv.textContent = "Estado: Sin análisis registrados";
+            estadoDiv.className = "estado sin-datos";
+            return;
+        }
+
+
+        const ultimoDato = datos[datos.length - 1];
+        
+
+        const referencia = ultimoDato.rangoReferencia;
+        
+        if (!referencia) {
+            console.error("El registro no cuenta con un objeto de rangoReferencia válido.");
+            return;
+        }
+
+        const min = referencia.valorMinimo;
+        const max = referencia.valorMaximo;
+        const hemoglobinaActual = ultimoDato.valorHemoglobina;
+
+        const temperaturaActual = ultimoDato.temperatura; 
+
+        console.log(`Evaluando Límites: ${min} - ${max}. Medición: ${hemoglobinaActual} g/dL, TEMPERATURA: ${temperaturaActual}°C`);
+
+        if (hemoglobinaActual < min) {
+            estadoDiv.textContent = `Estado: Alerta de Anemia (${hemoglobinaActual} g/dL)  TEMPERATURA: ${temperaturaActual} °C`;
+            estadoDiv.className = "estado anemia";
+        } else if (hemoglobinaActual > max) {
+            estadoDiv.textContent = `Estado: Alerta de Poliglobulia / Policitemia (${hemoglobinaActual} g/dL)  TEMPERATURA: ${temperaturaActual} °C`;
+            estadoDiv.className = "estado poliglobulia";
+        } else {
+            estadoDiv.textContent = `Estado: Fisiológicamente Estable (${hemoglobinaActual} g/dL)  TEMPERATURA: ${temperaturaActual} °C`;
+            estadoDiv.className = "estado estable";
+        }
+    } catch (error) {
+        console.error("Error en el flujo de rangos:", error);
+        estadoDiv.textContent = "Estado: Error al sincronizar";
     }
 }
+
 
 // ============================================================================
 // LIBRERÍA GRÁFICA INTEGRADA (0% Internet - Inmune a bloqueos)
@@ -585,6 +674,7 @@ function descargarReportePDF() {
 // --- TELEMETRÍA REAL EN VIVO DESDE LA NUBE DE FIREBASE ---
 // ========================================================
 function abrirModalAnalisis() {
+    cargarObservacionesEnSelect();
     document.getElementById("modalAnalisis").classList.add("active");
     document.getElementById("inputSection").style.display = "block";
     document.getElementById("loaderSection").style.display = "none";
@@ -752,6 +842,9 @@ async function iniciarVinculacionManual() {
 async function ejecutarGuardadoDefinitivo() {
     if (!datosMedicionTemporal) return;
 
+    // Captura el ID numérico seleccionado del combobox de observaciones
+    const idObservacionSeleccionada = document.getElementById("cboObservaciones")?.value || 0;
+
     const token = localStorage.getItem("token_seguridad");
     const mensaje = document.getElementById("modalMensaje");
     const loaderTexto = document.getElementById("loaderTexto");
@@ -761,7 +854,8 @@ async function ejecutarGuardadoDefinitivo() {
     loaderTexto.innerText = "Guardando...";
 
     try {
-        const respuestaBackend = await fetch(`${API_URL}Dashboard/guardarAnalisis`, {
+        // Se añade idObservacionSeleccionada a la URL de forma dinámica
+        const respuestaBackend = await fetch(`${API_URL}Dashboard/guardarAnalisis/${idObservacionSeleccionada}`, {
             method: "POST",
             headers: {
                 "Authorization": "Bearer " + token.trim(),
@@ -769,6 +863,7 @@ async function ejecutarGuardadoDefinitivo() {
             },
             body: JSON.stringify({
                 valorHemoglobina: datosMedicionTemporal.valor_hemoglobina,
+                temperatura: datosMedicionTemporal.temperatura,
                 fechaAnalisis: new Date().toISOString()
             })
         });
@@ -789,4 +884,5 @@ async function ejecutarGuardadoDefinitivo() {
         document.getElementById("btnGuardarSQL").style.display = "block";
     }
 }
+
 
