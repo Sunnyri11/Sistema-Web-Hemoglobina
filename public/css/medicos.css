@@ -230,7 +230,8 @@ main {
     flex: 1;
     overflow-y: auto;
     max-height: 320px; /* Tamaño máximo para activar el scrollbar */
-    padding-right: 4px;
+    padding-right: 2px;
+    max-width: auto;
 }
 
 /* Personalización de la barra de desplazamiento (Scrollbar) */
@@ -276,6 +277,11 @@ tr {
     transition: background-color 0.2s ease;
 }
 
+#fecha
+{
+    min-width: 100px;
+}
+
 /* Efecto Hover sobre las filas */
 tbody tr:hover {
     background-color: #f1f5f9;
@@ -283,7 +289,7 @@ tbody tr:hover {
 }
 
 td {
-    padding: 14px 16px;
+    padding: 10px 10px;
     font-size: 14px;
     color: var(--text-main);
     vertical-align: middle;

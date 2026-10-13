@@ -87,8 +87,18 @@
                 <input type="password" id="password" name="password" placeholder="Dejar en blanco para no cambiar">
             </div>
 
-            <div class="form-group">
-                <button class="btn btn-info" type="button" onclick="Selector()">Nuevo Rol de Paciente</button>
+            <!-- NUEVO SELECT PARA ESPECIALIDADES -->
+            <div id="contenedorEspecialidades" class="form-group">
+                <label for="selectEspecialidades">Especialidad Médica</label>
+                <select id="selectEspecialidades" name="especialidad" required>
+                    <option value="" disabled selected>Cargando especialidades...</option>
+                    <!-- Las opciones de tu API se renderizarán aquí -->
+                </select>
+            </div>
+
+            <!-- CONTENEDOR DINÁMICO PARA EL BOTÓN O MENSAJE DE ROL PACIENTE -->
+            <div id="contenedorAccionRol" class="form-group" style="margin-top: 16px;">
+                <!-- Se genera dinámicamente mediante JavaScript -->
             </div>
 
             <div id="contenedorTipoSangre" class="form-group" style="display: none; margin-top: 16px;">
@@ -115,7 +125,7 @@
                 </select>
             </div>
 
-            <button type="submit" class="btn-submit">Guardar Cambios</button>
+            <button type="submit" class="btn-submit" style="margin-top: 20px;">Guardar Cambios</button>
         </form>
         <hr>
         <a class="btn btn-primary" href="Pagina_Medicos.html">Volver al Panel</a>
@@ -123,189 +133,6 @@
 
     <script src="../public/js/config.js"></script>
     <script src="../public/js/editarmedico.js"></script>
-    <script>
-        // 1. Cargar Departamentos automáticamente desde MySQL al abrir la página
-        document.addEventListener("DOMContentLoaded", async () => {
-            const selectDepto = document.getElementById('departamento');
-            try {
-                const respuesta = await fetch(`${API_URL}geografia/departamentos`);
-                if (respuesta.ok) {
-                    const departamentos = await respuesta.json();
-                    selectDepto.innerHTML = '<option value="" disabled selected>Seleccione departamento</option>';
-                    departamentos.forEach(d => {
-                        let option = document.createElement('option');
-                        option.value = d.idDepartamento;
-                        option.textContent = d.nombre;
-                        selectDepto.appendChild(option);
-                    });
-                }
-            } catch (error) {
-                console.error("Error al cargar departamentos:", error);
-            }
-        });
-
-        // 2. Cargar Provincias/Ciudades dinámicamente filtradas por el departamento
-        async function cargarProvincias() {
-            const idDepto = document.getElementById('departamento').value;
-            const selectProvincia = document.getElementById('provincia');
-            const inputAltitud = document.getElementById('altitud');
-
-            selectProvincia.innerHTML = '<option value="" disabled selected>Seleccione provincia</option>';
-            inputAltitud.value = '';
-
-            if (!idDepto) return;
-
-            try {
-                const respuesta = await fetch(`${API_URL}geografia/provincias/${idDepto}`);
-                if (respuesta.ok) {
-                    const provincias = await respuesta.json();
-                    provincias.forEach(p => {
-                        let option = document.createElement('option');
-                        option.value = p.idCiudad;
-                        option.textContent = p.nombre;
-                        option.setAttribute('data-altitud', p.altitud);
-                        selectProvincia.appendChild(option);
-                    });
-                }
-            } catch (error) {
-                console.error("Error al obtener las provincias:", error);
-            }
-        }
-
-        function Selector() {
-            const selectRol = document.getElementById("rol");
-            if (selectRol) {
-                selectRol.value = "Paciente";
-            }
-
-            const contenedorSangre = document.getElementById("contenedorTipoSangre");
-            const selectSangre = document.getElementById("Tipo_Sangre");
-
-            if (contenedorSangre) {
-                contenedorSangre.style.display = "block";
-            }
-
-            if (selectSangre) {
-                selectSangre.setAttribute("required", "required");
-            }
-
-            const contenedorEsp = document.getElementById("contenedorEspecialidad");
-            const selectEsp = document.getElementById("especialidad");
-            if (contenedorEsp) contenedorEsp.style.display = "none";
-            if (selectEsp) selectEsp.removeAttribute("required");
-        }
-
-        // 4. Asignar la altitud promedio calculada de la provincia seleccionada
-        function actualizarAltitud() {
-            const selectProvincia = document.getElementById('provincia');
-            const optionSeleccionada = selectProvincia.options[selectProvincia.selectedIndex];
-            const inputAltitud = document.getElementById('altitud');
-
-            if (optionSeleccionada && optionSeleccionada.value) {
-                const altitud = optionSeleccionada.getAttribute('data-altitud');
-                inputAltitud.value = altitud || 0;
-            } else {
-                inputAltitud.value = '';
-            }
-        }
-
-        // 5. Envío estructurado del JSON final discriminando el rol hacia la API
-        document.getElementById('formRegistro').addEventListener('submit', async function (e) {
-            e.preventDefault();
-
-            const token = localStorage.getItem("token_seguridad");
-            const idMedico = localStorage.getItem("usuario_id") || "5";
-
-            const selectDepto = document.getElementById('departamento');
-            const selectProv = document.getElementById('provincia');
-
-            const contenedorSangre = document.getElementById("contenedorTipoSangre");
-            const esPacienteAdemas = contenedorSangre && contenedorSangre.style.display === "block";
-
-            let tipoSangreValor = null;
-            if (esPacienteAdemas) {
-                const selectSangre = document.getElementById("Tipo_Sangre");
-                if (selectSangre && selectSangre.value) {
-                    tipoSangreValor = selectSangre.value;
-                }
-            }
-
-            let fechaRaw = document.getElementById('fecha_nacimiento').value;
-            if (fechaRaw && fechaRaw.includes("/")) {
-                const partes = fechaRaw.split("/");
-                if (partes.length === 3) {
-                    fechaRaw = `${partes[2]}-${partes[1]}-${partes[0]}`;
-                }
-            }
-
-            const inputGenero = document.querySelector('input[name="genero"]:checked');
-            const generoVal = inputGenero ? parseInt(inputGenero.value, 10) : 1;
-
-            const altitudTxt = document.getElementById('altitud').value;
-            const altitudVal = altitudTxt ? parseFloat(altitudTxt) : null;
-
-            // CORRECCIÓN: Obtener el ID numérico del select de la ciudad/departamento
-            const idCiudadValor = selectDepto && selectDepto.value ? parseInt(selectDepto.value, 10) : 0;
-
-            const dataUsuario = {
-                IdUsuario: parseInt(idMedico, 10),
-                Nombre: document.getElementById('nombre').value.trim() || null,
-                ApellidoPaterno: document.getElementById('paterno').value.trim() || null,
-                ApellidoMaterno: document.getElementById('materno').value.trim() || null,
-                Genero: generoVal,
-                FechaNacimiento: fechaRaw || null,
-
-                // CORRECCIÓN CLAVE: Enviamos el ID como entero en lugar del string de texto
-                IdCiudad: idCiudadValor,
-
-                Provincia: selectProv && selectProv.selectedIndex >= 0 ? selectProv.options[selectProv.selectedIndex].text : null,
-                Altitud: altitudVal,
-                Correo: document.getElementById('correo').value.trim() || null,
-                Password: document.getElementById('password').value.trim() || null,
-                Rol: esPacienteAdemas ? "Paciente" : "Medico",
-                Tipo_Sangre: tipoSangreValor,
-                IdEspecialidad: 0
-            };
-
-            try {
-                const respuesta = await fetch(`${API_URL}Medico/editarmedico/${idMedico}`, {
-                    method: "PUT",
-                    headers: {
-                        "Authorization": "Bearer " + token?.trim(),
-                        "Content-Type": "application/json"
-                    },
-                    body: JSON.stringify(dataUsuario)
-                });
-
-                const textoRespuesta = await respuesta.text();
-                let resultado = {};
-                try {
-                    resultado = JSON.parse(textoRespuesta);
-                } catch (e) {
-                    resultado = { mensaje: textoRespuesta };
-                }
-
-                if (respuesta.ok) {
-                    alert(resultado.mensaje || "Perfil actualizado correctamente.");
-                    window.location.href = "Pagina_Medicos.html";
-                } else {
-                    if (resultado.errors) {
-                        let mensajesError = "Errores de validación:\n";
-                        for (const campo in resultado.errors) {
-                            mensajesError += `• ${campo}: ${resultado.errors[campo].join(', ')}\n`;
-                        }
-                        alert(mensajesError);
-                    } else {
-                        alert(resultado.mensaje || "Error 400: El formato de los datos no coincide con el servidor.");
-                    }
-                }
-            } catch (error) {
-                alert("No se pudo conectar con el servidor de la API.");
-                console.error("Error de red:", error);
-            }
-        });
-    </script>
-
 </body>
 
 </html>

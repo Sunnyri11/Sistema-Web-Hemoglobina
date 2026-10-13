@@ -82,14 +82,13 @@ async function cargarPacientes() {
             throw new Error('Error al obtener los datos de la API');
         }
         const todospacientes = await respuesta.json();
-
+        console.log(todospacientes);
         const persona = datosmedicos.persona || datosmedicos.Persona;
 
         const idPersonaMedico = persona ? persona.idPersona : null;
 
         // Filtramos comparando el idUsuario del paciente con el idPersona del médico
         const pacientes = todospacientes.filter(e => Number(e.idUsuario) != Number(idPersonaMedico));
-
 
         // Esto te ayudará a inspeccionar el objeto completo en la consola
         console.log("Datos de pacientes recibidos:", pacientes);
@@ -220,6 +219,7 @@ async function cargarDashboardMedico() {
         if (respuesta.ok) {
             const pacientes = await respuesta.json();
             listaPacientesGlobal = pacientes;
+            console.log(listaPacientesGlobal);
             let conteoAnemia = 0;
             let conteoPoliglobulia = 0;
             let conteoNormal = 0;
@@ -228,7 +228,7 @@ async function cargarDashboardMedico() {
                 document.getElementById("lblTotalPacientes").innerText = "0";
                 document.getElementById("graficoDonut").style.display = "none";
                 document.getElementById("mensajeSinPacientes").style.display = "block";
-                cuerpoTabla.innerHTML = `<tr><td colspan="4" style="text-align:center; color:#64748b; padding:20px;">No tiene pacientes asignados.</td></tr>`;
+                cuerpoTabla.innerHTML = `<tr><td colspan="5" style="text-align:center; color:#64748b; padding:20px;">No tiene pacientes asignados.</td></tr>`;
                 return;
             }
 
@@ -239,7 +239,29 @@ async function cargarDashboardMedico() {
             pacientes.forEach(p => {
                 let badgeEstilo = "";
                 let colorAvatar = "";
-                let estado = p.estadoSalud || "Normal";
+                let estado = "Normal"; 
+                let HbMostrar = "Sin registros";
+                let fecha ="Sin registros";
+                if (p.historialHemoglobinas && p.historialHemoglobinas.length > 0) {
+                    const ultimoHistorial = p.historialHemoglobinas[p.historialHemoglobinas.length - 1];
+                    HbMostrar = `${ultimoHistorial.valor} g/dL`;
+                    fecha = ultimoHistorial.fecha;
+                    console.log(fecha);
+                    const valor = ultimoHistorial.valor;
+                    const rango = ultimoHistorial.rango;
+
+                    if (rango) {
+                        if (valor < rango.minimo) {
+                            estado = "Anemia";
+                        } else if (valor > rango.maximo) {
+                            estado = "Poliglobulia";
+                        } else {
+                            estado = "Normal";
+                        }
+                    }
+                } else {
+                    HbMostrar ="Sin registros";
+                }
 
                 if (estado === "Anemia") {
                     conteoAnemia++;
@@ -253,21 +275,19 @@ async function cargarDashboardMedico() {
                     conteoNormal++;
                     badgeEstilo = "badge-normal";
                     colorAvatar = "var(--color-normal)";
-                    estado = "Normal";
                 }
 
-                const hbValor = p.tipoSangre ? p.tipoSangre : "Sin registros";
                 const nombreCompleto = getFullName(p);
                 const letraInicial = nombreCompleto.charAt(0).toUpperCase();
-                const ciudad =p.departamento.departamento1+" / "+p.ciudad.nombre;
-                // CORREGIDO: Aseguramos el ID correcto que viene del objeto de la iteración
-                const idPacienteActual = p.idUsuario || p.idPaciente || p.IdPaciente;
-
+                const ciudad = p.departamento.departamento1 + " / " + p.ciudad.nombre;
+                const idPacienteActual = p.idUsuario || p.idPersona;
+                const tiposangrepaciente=p.tipoSangre;
+                console.log(tiposangrepaciente);
                 const fila = document.createElement("tr");
-                fila.title = `Doble clic para desvincular la relación médica con ${nombreCompleto}`;
+                fila.title = `Doble clic para desvincular la relación médica`;
                 fila.style.cursor = "pointer";
 
-                // CORREGIDO: Se cambió \({idPaciente} por\){idPacienteActual} y el texto/estilo a "Quitar"
+                // CORREGIDO: El botón ahora llama pasándole únicamente el ID numérico
                 fila.innerHTML = `
                     <td>
                         <div class="patient-cell">
@@ -275,19 +295,23 @@ async function cargarDashboardMedico() {
                             <span>${nombreCompleto}</span>
                         </div>
                     </td>
-                    <td style="text-align: center;" class="hb-value">${hbValor}</td>
+
+                    <td style="text-align: center;" class="hb-value">${HbMostrar}</td>
+                    <td id="fecha" style="text-align: center;" class="hb-value">${fecha}</td>                                       
+                    <td style="text-align: center;" class="hb-value">${tiposangrepaciente}</td>
                     <td style="text-align: center;" class="hb-value">${ciudad}</td>
-                    <td style="text-align: center;"><span class="badge ${badgeEstilo}">${estado}</span></td>
+                    <td  style="text-align: center;"><span class="badge ${badgeEstilo}">${estado}</span></td>
                     <td style="text-align: center;">
-                        <button class="btn btn-danger btn-sm text-white" onclick="eliminarPacienteRelacion(${idPacienteActual}, '${nombreCompleto}')">
+                        <button class="btn btn-danger btn-sm text-white" onclick="eliminarPacienteRelacion(${idPacienteActual})">
                             ❌ Quitar
                         </button>
                     </td>
                 `;
 
+                // CORREGIDO: Se pasa únicamente el ID numérico en el evento manual
                 fila.addEventListener("dblclick", () => {
-                    if (confirm(`¿Deseas desvincular por completo al paciente ${nombreCompleto} de tu cuenta?`)) {
-                        eliminarPacienteRelacion(idPacienteActual, nombreCompleto);
+                    if (confirm(`¿Deseas desvincular por completo al paciente de tu cuenta?`)) {
+                        eliminarPacienteRelacion(idPacienteActual);
                     }
                 });
 
@@ -317,11 +341,11 @@ async function cargarDashboardMedico() {
             document.getElementById("lblTotalPacientes").innerText = "0";
             document.getElementById("graficoDonut").style.display = "none";
             document.getElementById("mensajeSinPacientes").style.display = "block";
-            cuerpoTabla.innerHTML = `<tr><td colspan="4" style="text-align:center; color:#64748b; padding:20px;">No se encontraron registros de pacientes asignados.</td></tr>`;
+            cuerpoTabla.innerHTML = `<tr><td colspan="5" style="text-align:center; color:#64748b; padding:20px;">No se encontraron registros de pacientes asignados.</td></tr>`;
         }
     } catch (error) {
         console.error("Error crítico de comunicación de red:", error);
-        cuerpoTabla.innerHTML = `<tr><td colspan="4" style="text-align:center; color:#ef4444; padding:20px;">Fallo de conexión con el servidor.</td></tr>`;
+        cuerpoTabla.innerHTML = `<tr><td colspan="5" style="text-align:center; color:#ef4444; padding:20px;">Fallo de conexión con el servidor.</td></tr>`;
     }
 }
 
@@ -339,7 +363,7 @@ async function eliminarPacienteRelacion(idUsuario) {
         const resultado = await respuesta.json();
 
         if (respuesta.ok) {
-            alert(resultado.mensaje || `El paciente ${nombreCompleto} fue removido con éxito.`);
+            alert(resultado.mensaje || "El paciente fue removido con éxito.");
             await cargarDashboardMedico(); // Recarga reactiva de la interfaz
         } else {
             alert(resultado.mensaje || "No se pudo eliminar la relación médica.");
@@ -355,7 +379,6 @@ async function asociarNuevoPaciente(idUsuario) {
     const token = localStorage.getItem("token_seguridad");
 
     try {
-        // Petición POST al endpoint unificado del MedicoController
         const respuesta = await fetch(`${API_URL}Medico/añadir-paciente/${idUsuario}`, {
             method: "POST",
             headers: {
@@ -364,25 +387,24 @@ async function asociarNuevoPaciente(idUsuario) {
             }
         });
 
-        // Desempaquetar la respuesta JSON del servidor
         const resultado = await respuesta.json();
 
         if (respuesta.ok) {
-            // Notificar éxito al médico
             alert(resultado.mensaje || "Paciente añadido correctamente a tu lista de seguimiento.");
-
-            // Recargar el panel de manera reactiva para actualizar la tabla y el gráfico cónico
             await cargarDashboardMedico();
         } else {
-            // Manejar errores de negocio controlados por el backend (Ej: 400 Duplicados, 404 No existe)
-            alert(resultado.mensaje || "Error al intentar asociar el paciente.");
+            alert(resultado.mensaje || "No se pudo asociar el paciente.");
         }
     } catch (error) {
-        // Captura de fallas críticas de red o caídas del servidor
-        console.error("Error en la solicitud de adición:", error);
-        alert("Ocurrió un fallo crítico de conexión al intentar añadir el paciente.");
+        console.error("Error en la solicitud de asociación:", error);
+        alert("Ocurrió un fallo de conexión al intentar vincular el paciente.");
     }
 }
+
+// Vinculación explícita al contexto global del navegador
+window.cargarDashboardMedico = cargarDashboardMedico;
+window.asociarNuevoPaciente = asociarNuevoPaciente;
+window.eliminarPacienteRelacion = eliminarPacienteRelacion;
 
 function cambiarPestana(pestana) {
     // 1. Capturamos los elementos del HTML

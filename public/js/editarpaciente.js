@@ -1,10 +1,10 @@
 var datosmedicos = {};
 document.addEventListener("DOMContentLoaded", async () => {
     const selectDepto = document.getElementById('departamento');
-    
+    await cargarPaciente();
     // Configurar listeners para los cambios manuales del usuario
     selectDepto.addEventListener('change', () => cargarProvincias());
-    
+
     const selectProvincia = document.getElementById('provincia');
     if (selectProvincia) {
         selectProvincia.addEventListener('change', actualizarAltitud);
@@ -16,7 +16,7 @@ document.addEventListener("DOMContentLoaded", async () => {
         if (respuesta.ok) {
             const departamentos = await respuesta.json();
             selectDepto.innerHTML = '<option value="" disabled selected>Seleccione departamento</option>';
-            
+
             departamentos.forEach(d => {
                 let option = document.createElement('option');
                 option.value = d.idDepartamento;
@@ -25,7 +25,7 @@ document.addEventListener("DOMContentLoaded", async () => {
             });
 
             // CORRECCIÓN: Ejecutamos la carga del paciente SOLO cuando los departamentos ya existen en el DOM
-            await cargarPaciente();
+
         }
     } catch (error) {
         console.error("Error al cargar la configuración inicial:", error);
@@ -53,14 +53,14 @@ async function cargarPaciente() {
         if (respuesta.ok) {
             datospaciente = await respuesta.json();
             console.log("Datos recibidos del servidor:", datospaciente);
-            
-            const paci = datospaciente.persona;
-            document.getElementById("nombre").value = paci.nombre;
 
-            const palabrasApellido = (paci.apellido || '').trim().split(' ');
-            const apellidoPaterno = palabrasApellido[0] || '';
-            const apellidoMaterno = palabrasApellido.slice(1).join(' ') || '';
-            
+            const paci = datospaciente.persona;
+            console.log(paci);
+            document.getElementById("nombre").value = paci.nombre;
+            const apellidoPaterno = paci.paterno;
+            const apellidoMaterno = paci.materno;
+            console.log(apellidoPaterno);
+            console.log(apellidoMaterno);
             document.getElementById("paterno").value = apellidoPaterno;
             document.getElementById("materno").value = apellidoMaterno;
 
@@ -69,14 +69,14 @@ async function cargarPaciente() {
             if (departamento && departamento.idDepartamento) {
 
                 document.getElementById("departamento").value = departamento.idDepartamento;
-                
-                provinciaIdPrecarga = ciudad.idCiudad; 
-                
-                await cargarProvincias(); 
+
+                provinciaIdPrecarga = ciudad.idCiudad;
+
+                await cargarProvincias();
             }
-            const tiposangre= datospaciente.tipoSangre;
+            const tiposangre = datospaciente.tipoSangre;
             console.log(tiposangre);
-            document.getElementById("Tipo_Sangre").value=tiposangre.tipoDeSangre;
+            document.getElementById("Tipo_Sangre").value = tiposangre.tipoDeSangre;
             const generoValor = Number(paci.idGenero);
             if (generoValor === 1) {
                 document.getElementById("genero_masculino").checked = true;
