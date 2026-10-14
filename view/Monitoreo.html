@@ -42,6 +42,11 @@
         <button class="btn btn-reportes" onclick="descargarReportePDF()">
           Ver Reportes Históricos
         </button>
+
+        <button class="btn btn-info" onclick="abrirModalEnvioCorreos()">
+          📧 Compartir Reporte
+        </button>
+
         <a class="btn btn-warning" href="EditarPaciente.html">Editar Perfil</a>
         <button class="btn btn-logout" id="btnCerrarSesion">
           Cerrar Sesión
@@ -137,15 +142,62 @@
       </div>
     </div>
 
+    <div id="modalEnvioCorreos" class="modal-overlay">
 
+      <div class="modal-box">
 
+        <button class="btn-close-modal" onclick="cerrarModalEnvioCorreos()">
+          &times;
+        </button>
+
+        <h2>Compartir Reporte Clínico</h2>
+
+        <p>
+          Seleccione uno de sus médicos asociados o escriba
+          un correo personalizado.
+        </p>
+
+        <div id="listaMedicosReporte">
+
+          <div style="
+                text-align:center;
+                padding:20px;
+                color:#64748b;
+            ">
+            Cargando médicos...
+          </div>
+
+        </div>
+
+        <hr>
+
+        <div style="
+            display:flex;
+            flex-direction:column;
+            gap:12px;
+        ">
+
+          <h5>Otro destinatario</h5>
+
+          <input type="email" id="txtCorreoPersonalizado" class="input-codigo" placeholder="correo@ejemplo.com">
+
+          <button class="btn btn-success" onclick="enviarCorreoPersonalizado()">
+
+            Enviar Reporte
+          </button>
+
+        </div>
+
+      </div>
+
+    </div>
     <!-- CDN para bibliotecas externas -->
     <script src="https://cloudflare.com"></script>
     <script src="https://cloudflare.com"></script>
     <script src="https://cloudflare.com"></script>
 
     <script src="../public/js/config.js"></script>
-    <script src="../public/js/paciente.js"></script>
+    <script src="../public/js/paciente.js?v=1.1"></script>
 </body>
 
 </html>

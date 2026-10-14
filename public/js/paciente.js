@@ -502,14 +502,14 @@ async function actualizarEstadoClinico() {
     const estadoDiv = document.getElementById("estadoPaciente");
     if (!estadoDiv) return;
 
-    const token = localStorage.getItem("token_seguridad"); 
+    const token = localStorage.getItem("token_seguridad");
     const id = localStorage.getItem("usuario_id");
 
     try {
         const respuesta = await fetch(`${API_URL}RangoHemoglobina/mirango/${id}`, {
             method: 'GET',
             headers: {
-                'Authorization': `Bearer ${token.trim()}`, 
+                'Authorization': `Bearer ${token.trim()}`,
                 'Content-Type': 'application/json'
             }
         });
@@ -526,10 +526,10 @@ async function actualizarEstadoClinico() {
 
 
         const ultimoDato = datos[datos.length - 1];
-        
+
 
         const referencia = ultimoDato.rangoReferencia;
-        
+
         if (!referencia) {
             console.error("El registro no cuenta con un objeto de rangoReferencia válido.");
             return;
@@ -539,7 +539,7 @@ async function actualizarEstadoClinico() {
         const max = referencia.valorMaximo;
         const hemoglobinaActual = ultimoDato.valorHemoglobina;
 
-        const temperaturaActual = ultimoDato.temperatura; 
+        const temperaturaActual = ultimoDato.temperatura;
 
         console.log(`Evaluando Límites: ${min} - ${max}. Medición: ${hemoglobinaActual} g/dL, TEMPERATURA: ${temperaturaActual}°C`);
 
@@ -884,5 +884,150 @@ async function ejecutarGuardadoDefinitivo() {
         document.getElementById("btnGuardarSQL").style.display = "block";
     }
 }
+
+function abrirModalEnvioCorreos() {
+    console.log("Abriendo modal...");
+    const modal = document.getElementById("modalEnvioCorreos");
+    
+    if (modal) {
+        modal.classList.add("active");
+        
+        // Forzamos un pequeño retraso de 50 milisegundos para garantizar 
+        // que el navegador ya renderizó el HTML del modal antes de buscar la lista
+        setTimeout(() => {
+            console.log("Llamando de forma segura a cargarMedicosAsociados()...");
+            cargarMedicosAsociados();
+        }, 50);
+        
+    } else {
+        console.error("No se encontró el elemento HTML con id 'modalEnvioCorreos'");
+    }
+}
+
+async function cargarMedicosAsociados() {
+    console.log("hoiaaaaa");
+    console.log("=== INICIANDO CARGA DE MÉDICOS ===");
+    const id = localStorage.getItem("usuario_id");
+    const token = localStorage.getItem("token_seguridad");
+    const contenedor = document.getElementById("listaMedicosReporte");
+
+    try {
+        const respuesta = await fetch(`${API_URL}Paciente/mismedicos/${id}`, {
+            method: "GET",
+            headers: {
+                "Authorization": "Bearer " + token,
+                "Content-Type": "application/json"
+            }
+        });
+
+        // Validación: Si el backend devuelve un error (ej. 401, 404, 500)
+        if (!respuesta.ok) {
+            throw new Error(`Error en el servidor: ${respuesta.status}`);
+        }
+
+        const medicos = await respuesta.json();
+        contenedor.innerHTML = ""; // Limpiamos el texto de "Cargando médicos..."
+
+        if (!medicos || medicos.length === 0) {
+            contenedor.innerHTML = "<div style='text-align:center; padding:10px;'>No se encontraron médicos asociados.</div>";
+            return;
+        }
+
+        let html = "";
+        medicos.forEach(m => {
+            // Mapeo adaptado al JSON en minúsculas (camelCase) de .NET
+            const nombre = m.nombre || "Sin Nombre";
+            const paterno = m.paterno || "";
+            const materno = m.materno || "";
+            const especialidad = m.especialidad || "Sin Especialidad";
+            
+            // Accedemos a la propiedad interna del objeto correo que viene de tu base de datos
+            const correoMedico = m.correo?.correoElectronico || "Sin Correo";
+
+            html += `
+            <div style="
+                border:1px solid #e2e8f0;
+                border-radius:10px;
+                padding:12px;
+                margin-bottom:10px;
+                background:#f8fafc;
+                text-align: left;
+            ">
+                <strong>Dr(a). ${nombre} ${paterno} ${materno}</strong>
+                <br>
+                <small style="color: #64748b;">${especialidad}</small>
+                <br>
+                <small style="color: #0f172a; font-weight: 500;">${correoMedico}</small>
+                <br><br>
+                <button class="btn btn-primary btn-enviar-reporte" data-correo="${correoMedico}">
+                    Enviar Reporte
+                </button>
+            </div>
+            `;
+        });
+
+        contenedor.innerHTML = html;
+
+        // Asignamos el evento click de manera dinámica y segura para evitar errores de comillas
+        contenedor.querySelectorAll(".btn-enviar-reporte").forEach(boton => {
+            boton.addEventListener("click", function() {
+                const correo = this.getAttribute("data-correo");
+                enviarReporteCorreo(correo);
+            });
+        });
+
+    } catch (error) {
+        console.error("Error en cargarMedicosAsociados:", error);
+        contenedor.innerHTML = `
+        <div style='color:red; text-align:center; padding:10px;'>
+            Error al cargar médicos. Verifique su conexión o sesión.
+        </div>
+        `;
+    }
+}
+
+function enviarCorreoPersonalizado() {
+    const correo = document.getElementById("txtCorreoPersonalizado").value.trim();
+
+    if (!correo) {
+        alert("Ingrese un correo.");
+        return;
+    }
+
+    enviarReporteCorreo(correo);
+}
+
+function cerrarModalEnvioCorreos() {
+    document.getElementById("modalEnvioCorreos").classList.remove("active");
+}
+
+async function enviarReporteCorreo(correo) {
+    if (correo === "Sin Correo") {
+        alert("Este médico no cuenta con un correo electrónico registrado.");
+        return;
+    }
+
+    console.log("Enviando reporte al destinatario:", correo);
+    const id = localStorage.getItem("usuario_id");
+
+    try {
+        // Usamos encodeURIComponent para proteger caracteres especiales como el '@' en la URL
+        const respuesta = await fetch(
+            `${API_URL}Email/enviar-reporte?id_usuario=${id}&correo_electronico=${encodeURIComponent(correo)}`,
+            { method: "POST" }
+        );
+
+        if (!respuesta.ok) {
+            throw new Error(`Error al enviar: ${respuesta.status}`);
+        }
+
+        const datos = await respuesta.json();
+        alert(datos.mensaje || "Reporte enviado con éxito.");
+    } catch (error) {
+        console.error("Error en enviarReporteCorreo:", error);
+        alert("No se pudo enviar el reporte. Inténtelo más tarde.");
+    }
+}
+
 
 
