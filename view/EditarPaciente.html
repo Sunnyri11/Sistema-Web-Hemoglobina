@@ -143,28 +143,6 @@
     <script src="../public/js/config.js"></script>
     <script src="../public/js/editarpaciente.js"></script>
     <script>
-        let provinciaIdPrecarga = null;
-
-        // Función dinámica para alternar contraseña y cambiar entre los SVGs de ojo abierto/cerrado
-        function togglePassword(fieldId, iconId) {
-            const inputField = document.getElementById(fieldId);
-            const iconElement = document.getElementById(iconId);
-
-            if (inputField.type === "password") {
-                inputField.type = "text";
-                iconElement.innerHTML = `
-                    <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"></path>
-                    <line x1="1" y1="1" x2="23" y2="23"></line>
-                `;
-            } else {
-                inputField.type = "password";
-                iconElement.innerHTML = `
-                    <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
-                    <circle cx="12" cy="12" r="3"></circle>
-                `;
-            }
-        }
-
         // Establecer fecha máxima permitida (hoy) al cargar
         document.addEventListener("DOMContentLoaded", () => {
             const hoy = new Date().toISOString().split("T")[0];
@@ -173,53 +151,6 @@
                 inputFechaNac.setAttribute("max", hoy);
             }
         });
-
-        async function cargarProvincias() {
-            const idDepto = document.getElementById('departamento').value;
-            const selectProvincia = document.getElementById('provincia');
-            const inputAltitud = document.getElementById('altitud');
-
-            if (!idDepto) return;
-
-            selectProvincia.innerHTML = '<option value="" disabled selected>Seleccione provincia/ciudad</option>';
-            if (inputAltitud) inputAltitud.value = '';
-
-            try {
-                const respuesta = await fetch(`${API_URL}geografia/provincias/${idDepto}`);
-                if (respuesta.ok) {
-                    const provincias = await respuesta.json();
-                    
-                    provincias.forEach(p => {
-                        let option = document.createElement('option');
-                        option.value = p.idCiudad;
-                        option.textContent = p.nombre;
-                        option.setAttribute('data-altitud', p.altitud);
-                        selectProvincia.appendChild(option);
-                    });
-
-                    if (provinciaIdPrecarga) {
-                        selectProvincia.value = provinciaIdPrecarga;
-                        provinciaIdPrecarga = null; 
-                        actualizarAltitud(); 
-                    }
-                }
-            } catch (error) {
-                console.error("Error al obtener las provincias:", error);
-            }
-        }
-
-        function actualizarAltitud() {
-            const selectProvincia = document.getElementById('provincia');
-            const optionSeleccionada = selectProvincia.options[selectProvincia.selectedIndex];
-            const inputAltitud = document.getElementById('altitud');
-
-            if (optionSeleccionada && optionSeleccionada.value) {
-                const altitud = optionSeleccionada.getAttribute('data-altitud');
-                inputAltitud.value = altitud || 0;
-            } else {
-                if (inputAltitud) inputAltitud.value = '';
-            }
-        }
 
         // Envío con validaciones condicionales (los campos vacíos se omiten o mantienen por defecto)
         document.getElementById('formRegistro').addEventListener('submit', async function (e) {
