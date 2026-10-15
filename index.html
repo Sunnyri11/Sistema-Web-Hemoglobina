@@ -10,6 +10,9 @@
     integrity="sha384-sRIl4kxILFvY47J16cr9ZwB07vP4J8+LH7qKQnuqkuIAvNWLzeN8tE5YBujZqJLB" crossorigin="anonymous">
   
   <link rel="stylesheet" href="public/css/login.css">
+  <!-- CSS de la Pantalla de Carga -->
+  <link rel="stylesheet" href="public/css/loader.css">
+  
   <link rel="manifest" href="manifest.json">
   <meta name="theme-color" content="#4A90E2">
 </head>
@@ -59,13 +62,31 @@
   </div>
 
   <script src="public/js/config.js"></script>
+  <!-- Script de la Pantalla de Carga -->
+  <script src="public/js/loader.js"></script>
+  
   <script>
+    // Aseguramos que el loader esté inyectado en el DOM desde el inicio
+    document.addEventListener("DOMContentLoaded", () => {
+      if (typeof inicializarLoader === "function") {
+        inicializarLoader();
+      }
+    });
+
     document.getElementById("formSistema").addEventListener("submit", async function (e) {
       e.preventDefault();
 
       const email = document.getElementById("correo").value;
       const password = document.getElementById("password").value;
       const rol = document.getElementById("rol").value;
+
+      // 1. Mostramos la pantalla de carga de inmediato
+      if (typeof mostrarLoader === "function") {
+        mostrarLoader("Validando credenciales...");
+      }
+
+      // 2. Damos un respiro al motor del navegador para que renderice el spinner
+      await new Promise(resolve => setTimeout(resolve, 60));
 
       try {
         const respuesta = await fetch(`${API_URL}Autenticacion/login`, {
@@ -83,25 +104,40 @@
         const datos = await respuesta.json();
 
         if (respuesta.ok) {
-          alert("Inicio de sesión exitoso. ¡Bienvenido " + (datos.nombre || "") + "!");
-          
+          // Actualizamos el mensaje del loader con éxito
+          if (typeof mostrarLoader === "function") {
+            mostrarLoader("¡Bienvenido " + (datos.nombre || "") + "!");
+          }
+
           // Guardar datos en localStorage
           localStorage.setItem("token_seguridad", datos.token);
           localStorage.setItem("usuario_id", datos.idEntidad);
 
-          // Redirección basada en el rol que devuelve la API
-          if (datos.rol === "Paciente") {
-            window.location.href = "view/Monitoreo.html";
-          } else if (datos.rol === "Medico") {
-            window.location.href = "view/Pagina_Medicos.html";
-          } else if (datos.rol === "Administrador") {
-            window.location.href = "view/Pagina_Administrador.html";
-          }
+          // Pausa visual de 800ms antes de redirigir
+          setTimeout(() => {
+            if (typeof ocultarLoader === "function") {
+              ocultarLoader();
+            }
+            if (datos.rol === "Paciente") {
+              window.location.href = "view/Monitoreo.html";
+            } else if (datos.rol === "Medico") {
+              window.location.href = "view/Pagina_Medicos.html";
+            } else if (datos.rol === "Administrador") {
+              window.location.href = "view/Pagina_Administrador.html";
+            }
+          }, 800);
+
         } else {
+          if (typeof ocultarLoader === "function") {
+            ocultarLoader();
+          }
           alert(datos.mensaje || "Error 400: Datos incorrectos o formato inválido.");
           console.error("Detalle del error 400:", datos);
         }
       } catch (error) {
+        if (typeof ocultarLoader === "function") {
+          ocultarLoader();
+        }
         console.error(error);
         alert("No se pudo conectar con el servidor de la API.");
       }

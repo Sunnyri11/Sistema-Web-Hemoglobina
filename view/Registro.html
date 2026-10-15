@@ -7,7 +7,10 @@
   <title>Registro de Paciente - Hemoglobina</title>
   <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.8/dist/css/bootstrap.min.css" rel="stylesheet"
     integrity="sha384-sRIl4kxILFvY47J16cr9ZwB07vP4J8+LH7qKQnuqkuIAvNWLzeN8tE5YBujZqJLB" crossorigin="anonymous">
+  
   <link rel="stylesheet" href="../public/css/registro.css">
+  <!-- CSS de la Pantalla de Carga -->
+  <link rel="stylesheet" href="../public/css/loader.css">
 </head>
 
 <body>
@@ -138,7 +141,11 @@
     <hr>
     <a class="btn btn-primary" href="../index.html">Iniciar Sesión</a>
   </div>
+
   <script src="../public/js/config.js"></script>
+  <!-- Script de la Pantalla de Carga -->
+  <script src="../public/js/loader.js"></script>
+
   <script>
     var idciudade = 0;
 
@@ -267,12 +274,10 @@
       // EXPRESIONES REGULARES DE VALIDACIÓN
       const soloTextoRegex = /^[A-Za-zÁÉÍÓÚáéíóúÑñ\s]+$/;
       const correoRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-      // Contraseña: De 8 a 16 caracteres, al menos una minúscula, una mayúscula, un número y un caracter especial
       const passwordRegex = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[\W_]).{8,16}$/;
 
       // --- VALIDACIONES ---
 
-      // 1. Nombres: Obligatorio, solo texto, máximo 30 caracteres
       if (!nombre) {
         alert("El campo Nombre(s) es obligatorio.");
         return;
@@ -286,7 +291,6 @@
         return;
       }
 
-      // 2. Apellido Paterno (Opcional)
       if (apellidoPaterno !== "") {
         if (apellidoPaterno.length > 30) {
           alert("El Apellido Paterno no debe exceder los 30 caracteres.");
@@ -298,7 +302,6 @@
         }
       }
 
-      // 3. Apellido Materno (Opcional)
       if (apellidoMaterno !== "") {
         if (apellidoMaterno.length > 30) {
           alert("El Apellido Materno no debe exceder los 30 caracteres.");
@@ -310,7 +313,6 @@
         }
       }
 
-      // 4. Fecha de nacimiento (No futura)
       if (!inputFecha) {
         alert("Por favor, ingrese una fecha de nacimiento válida.");
         return;
@@ -323,7 +325,6 @@
         return;
       }
 
-      // 5. Departamento y Ciudad obligatorios
       if (!selectDepto) {
         alert("Debe seleccionar un Departamento.");
         return;
@@ -333,13 +334,11 @@
         return;
       }
 
-      // 6. Altitud no negativa
       if (isNaN(altitudVal) || altitudVal < 0) {
         alert("La altitud no puede ser un valor negativo.");
         return;
       }
 
-      // 7. Correo electrónico (Formato y max 30 caracteres)
       if (!correo) {
         alert("El correo electrónico es obligatorio.");
         return;
@@ -353,19 +352,20 @@
         return;
       }
 
-      // 8. Contraseña (De 8 a 16 caracteres, min, may, num y especial)
       if (!passwordRegex.test(password)) {
         alert("La contraseña debe tener entre 8 y 16 caracteres, incluir letras minúsculas, mayúsculas, números y al menos un carácter especial.");
         return;
       }
 
-      // 9. Confirmar Contraseña (Coincidencia)
       if (password !== confirmPassword) {
         alert("Las contraseñas no coinciden. Por favor, verifíquelas.");
         return;
       }
 
-      // Construcción del objeto para enviar a la API
+      // Activamos la pantalla de carga antes de la petición fetch
+      mostrarLoader("Registrando usuario...");
+      await new Promise(resolve => setTimeout(resolve, 50));
+
       const selectDeptoElement = document.getElementById('departamento');
       const selectProvElement = document.getElementById('provincia');
       const selectEspElement = document.getElementById('especialidad');
@@ -403,13 +403,19 @@
         const resultado = await respuesta.json();
 
         if (respuesta.ok) {
-          alert(resultado.mensaje || "Registro completado con éxito.");
-          window.location.href = "../index.html";
+          mostrarLoader("¡Registro completado con éxito!");
+          setTimeout(() => {
+            ocultarLoader();
+            alert(resultado.mensaje || "Registro completado con éxito.");
+            window.location.href = "../index.html";
+          }, 800);
         } else {
+          ocultarLoader();
           console.error("Errores detallados enviados por el servidor .NET:", resultado);
           alert(resultado.mensaje || "Ocurrió un inconveniente al registrar. Revisa la consola para más detalles.");
         }
       } catch (error) {
+        ocultarLoader();
         alert("No se pudo conectar con el servidor de la API.");
         console.error("Error en la petición Fetch:", error);
       }

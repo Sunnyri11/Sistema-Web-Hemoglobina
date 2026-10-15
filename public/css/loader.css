@@ -1,0 +1,90 @@
+/* --- COMPONENTE GLOBAL DE PANTALLA DE CARGA --- */
+#globalLoader {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  background-color: rgba(15, 23, 42, 0.85);
+  backdrop-filter: blur(4px);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 9999;
+  opacity: 0;
+  visibility: hidden;
+  transition: opacity 0.3s ease, visibility 0.3s ease;
+}
+
+#globalLoader.active {
+  opacity: 1;
+  visibility: visible;
+}
+
+.loader-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 20px;
+}
+
+/* Spinner circular con barritas rotatorias estilo radial */
+.spinner-wrapper {
+  position: relative;
+  width: 110px;
+  height: 110px;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+.spinner-blade {
+  position: absolute;
+  width: 4px;
+  height: 14px;
+  background-color: #38bdf8;
+  border-radius: 2px;
+  animation: spinnerFade 1.2s linear infinite;
+}
+
+/* Posicionamiento radial de las 12 barritas */
+.spinner-blade:nth-child(1)  { transform: rotate(0deg) translate(0, -38px); animation-delay: -1.1s; }
+.spinner-blade:nth-child(2)  { transform: rotate(30deg) translate(0, -38px); animation-delay: -1.0s; }
+.spinner-blade:nth-child(3)  { transform: rotate(60deg) translate(0, -38px); animation-delay: -0.9s; }
+.spinner-blade:nth-child(4)  { transform: rotate(90deg) translate(0, -38px); animation-delay: -0.8s; }
+.spinner-blade:nth-child(5)  { transform: rotate(120deg) translate(0, -38px); animation-delay: -0.7s; }
+.spinner-blade:nth-child(6)  { transform: rotate(150deg) translate(0, -38px); animation-delay: -0.6s; }
+.spinner-blade:nth-child(7)  { transform: rotate(180deg) translate(0, -38px); animation-delay: -0.5s; }
+.spinner-blade:nth-child(8)  { transform: rotate(210deg) translate(0, -38px); animation-delay: -0.4s; }
+.spinner-blade:nth-child(9)  { transform: rotate(240deg) translate(0, -38px); animation-delay: -0.3s; }
+.spinner-blade:nth-child(10) { transform: rotate(270deg) translate(0, -38px); animation-delay: -0.2s; }
+.spinner-blade:nth-child(11) { transform: rotate(300deg) translate(0, -38px); animation-delay: -0.1s; }
+.spinner-blade:nth-child(12) { transform: rotate(330deg) translate(0, -38px); animation-delay: 0s; }
+
+@keyframes spinnerFade {
+  0% { opacity: 1; }
+  100% { opacity: 0.15; }
+}
+
+/* Logo central estático o con sutil pulso */
+.loader-logo {
+  position: absolute;
+  width: 50px;
+  height: 50px;
+  object-fit: contain;
+  border-radius: 50%;
+  animation: pulseLogo 2s ease-in-out infinite;
+}
+
+@keyframes pulseLogo {
+  0%, 100% { transform: scale(1); }
+  50% { transform: scale(1.08); }
+}
+
+.loader-text {
+  color: #f8fafc;
+  font-size: 15px;
+  font-weight: 600;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+}
