@@ -1,31 +1,31 @@
-import { getFullName, cerrarSesion  } from './utils.js';
+import { getFullName, cerrarSesion } from './utils.js';
 // Variable global para almacenar temporalmente los pacientes de la consulta y agilizar el filtro
 let listaPacientesGlobal = [];
 var datosmedicos = {};
 
 //Asignacion Botones
-function initButtons(){
+function initButtons() {
     const btnLogout = document.getElementById("btnCerrarSesion");
     if (btnLogout) {
         btnLogout.addEventListener("click", cerrarSesion);
     }
 
     const btnEdit = document.getElementById("btnEditarPerfil");
-    if(btnEdit){ btnEdit.addEventListener("click", editarPefil);}
+    if (btnEdit) { btnEdit.addEventListener("click", editarPefil); }
 
 
     const tabMis = document.getElementById('tabMisPacientes');
     const tabAnadir = document.getElementById('tabAnadirPacientes');
 
-    if(tabMis){
-        tabMis.addEventListener("click", ()=>cambiarPestana('mis-pacientes'));
+    if (tabMis) {
+        tabMis.addEventListener("click", () => cambiarPestana('mis-pacientes'));
     }
 
-    if(tabAnadir){
-        tabAnadir.addEventListener("click", ()=>cambiarPestana('anadir-pacientes'));
+    if (tabAnadir) {
+        tabAnadir.addEventListener("click", () => cambiarPestana('anadir-pacientes'));
     }
 
-        // 2. FILTRO EN TIEMPO REAL DESDE EL CAMPO DE TEXTO DEL HTML
+    // 2. FILTRO EN TIEMPO REAL DESDE EL CAMPO DE TEXTO DEL HTML
     const inputBuscar = document.getElementById("txtBuscarPaciente");
     if (inputBuscar) {
         inputBuscar.addEventListener("input", function (e) {
@@ -43,7 +43,7 @@ function initButtons(){
                 }
             });
         });
-        inputBuscar.addEventListener("input",filtrarPacientes);
+        inputBuscar.addEventListener("input", filtrarPacientes);
     }
 }
 
@@ -112,7 +112,7 @@ async function cargarPacientes() {
 
             // Obtenemos el ID del paciente cuidando las mayúsculas/minúsculas que envía tu C#
             const idPaciente = p.idPaciente || p.IdPaciente;
-            const ciudad = p.departamento.departamento1 + " / " +p.ciudad.nombre;
+            const ciudad = p.departamento.departamento1 + " / " + p.ciudad.nombre;
             return `
         <tr>
             <td><strong>${nombreCompleto}</strong></td>
@@ -239,9 +239,9 @@ async function cargarDashboardMedico() {
             pacientes.forEach(p => {
                 let badgeEstilo = "";
                 let colorAvatar = "";
-                let estado = "Normal"; 
+                let estado = "Normal";
                 let HbMostrar = "Sin registros";
-                let fecha ="Sin registros";
+                let fecha = "Sin registros";
                 if (p.historialHemoglobinas && p.historialHemoglobinas.length > 0) {
                     const ultimoHistorial = p.historialHemoglobinas[p.historialHemoglobinas.length - 1];
                     HbMostrar = `${ultimoHistorial.valor} g/dL`;
@@ -260,7 +260,7 @@ async function cargarDashboardMedico() {
                         }
                     }
                 } else {
-                    HbMostrar ="Sin registros";
+                    HbMostrar = "Sin registros";
                 }
 
                 if (estado === "Anemia") {
@@ -281,7 +281,7 @@ async function cargarDashboardMedico() {
                 const letraInicial = nombreCompleto.charAt(0).toUpperCase();
                 const ciudad = p.departamento.departamento1 + " / " + p.ciudad.nombre;
                 const idPacienteActual = p.idUsuario || p.idPersona;
-                const tiposangrepaciente=p.tipoSangre;
+                const tiposangrepaciente = p.tipoSangre;
                 console.log(tiposangrepaciente);
                 const fila = document.createElement("tr");
                 fila.title = `Doble clic para desvincular la relación médica`;
@@ -327,16 +327,71 @@ async function cargarDashboardMedico() {
                 const finAnemia = finNormal + porcAnemia;
 
                 const donut = document.getElementById("graficoDonut");
+
                 if (donut) {
-                    donut.title = `Distribución actual:\n• Normales: ${conteoNormal}\n• Anemia: ${conteoAnemia}\n• Poliglobulia: ${conteoPoliglobulia}`;
+                    // 1. Limpiar porcentajes previos para que no se dupliquen
+                    donut.innerHTML = "";
+
+                    // 2. Calcular el total de registros actuales
+                    const total = conteoNormal + conteoAnemia + conteoPoliglobulia;
+
+                    // 3. Pintar el gráfico de pastel tradicional (sólido)
                     donut.style.background = `conic-gradient(
                         var(--color-normal) 0% ${finNormal}%, 
                         var(--color-anemia) ${finNormal}% ${finAnemia}%, 
                         var(--color-poliglobulia) ${finAnemia}% 100%
-                    )`;
+                        )`;
+
+                    donut.title = `Distribución actual:\n• Normales: ${conteoNormal}\n• Anemia: ${conteoAnemia}\n• Poliglobulia: ${conteoPoliglobulia}`;
+
+                    // 4. Mapeo con los porcentajes de INICIO y FIN reales de cada rebanada
+                    if (total > 0) {
+                        const categorias = [
+                            { conteo: conteoNormal, desde: 0, hasta: finNormal },
+                            { conteo: conteoAnemia, desde: finNormal, hasta: finAnemia },
+                            { conteo: conteoPoliglobulia, desde: finAnemia, hasta: 100 }
+                        ];
+
+                        categorias.forEach(cat => {
+                            if (cat.conteo > 0) {
+                                // Calcular el porcentaje textual exacto
+                                const porcentajeTexto = Math.round((cat.conteo / total) * 100) + "%";
+
+                                // LÓGICA DE ÁNGULO CORREGIDA: Punto medio exacto de la rebanada actual
+                                const puntoMedioPorcentaje = cat.desde + (cat.hasta - cat.desde) / 2;
+
+                                // Convertir el porcentaje a grados (0-360) y restar 90 para que empiece arriba
+                                const grados = (puntoMedioPorcentaje * 3.6) - 90;
+                                const radianes = grados * (Math.PI / 180);
+
+                                // Distancia desde el centro (28px es el radio ideal para un círculo de 180px)
+                                const radioDistancia = 28;
+
+                                // Calcular coordenadas en pixeles respecto al centro exacto (90, 90)
+                                const x = 90 + radioDistancia * Math.cos(radianes);
+                                const y = 90 + radioDistancia * Math.sin(radianes);
+
+                                // Crear la etiqueta de texto e inyectarle estilos en línea para asegurar legibilidad
+                                const etiqueta = document.createElement("span");
+                                etiqueta.className = "porcentaje-pastel";
+                                etiqueta.innerText = porcentajeTexto;
+
+                                // Estilos forzados para garantizar posicionamiento y color blanco
+                                etiqueta.style.position = "absolute";
+                                etiqueta.style.left = `${x}px`;
+                                etiqueta.style.top = `${y}px`;
+                                etiqueta.style.color = "#ffffff";
+                                etiqueta.style.fontWeight = "bold";
+                                etiqueta.style.fontSize = "0.85rem";
+                                etiqueta.style.transform = "translate(-50%, -50%)";
+                                etiqueta.style.textShadow = "1px 1px 2px rgba(0,0,0,0.5)";
+
+                                donut.appendChild(etiqueta);
+                            }
+                        });
+                    }
                 }
             }
-
         } else {
             document.getElementById("lblTotalPacientes").innerText = "0";
             document.getElementById("graficoDonut").style.display = "none";
@@ -450,7 +505,7 @@ function cambiarPestana(pestana) {
 function filtrarPacientes() {
     // Obtener el texto que escribió el usuario (en minúsculas para que no importen las mayúsculas)
     const textoBusqueda = document.getElementById("txtBuscarPaciente").value.toLowerCase().trim();
-    
+
     // Identificar cuál pestaña está visible actualmente
     const vistaMisPacientes = document.getElementById("vistaMisPacientes");
     const esPestanaMisPacientes = (vistaMisPacientes && vistaMisPacientes.style.display !== "none");
@@ -466,14 +521,14 @@ function filtrarPacientes() {
             return;
         }
 
-   
+
         const resultadosFiltrados = listaPacientesGlobal.filter(p => {
             const nombreCompleto = getFullName(p).toLowerCase();
             return nombreCompleto.includes(textoBusqueda);
         });
 
         cuerpoTablaMis.innerHTML = "";
-        
+
         if (resultadosFiltrados.length === 0) {
             cuerpoTablaMis.innerHTML = `<tr><td colspan="4" style="text-align:center; color:#64748b; padding:20px;">No se encontraron coincidencias.</td></tr>`;
             return;
@@ -510,7 +565,7 @@ function filtrarPacientes() {
         if (!cuerpoTablaGlobales) return;
 
         if (textoBusqueda === "") {
-            cargarPacientes(); 
+            cargarPacientes();
             return;
         }
 
@@ -522,7 +577,7 @@ function filtrarPacientes() {
             const celdaNombre = filas[i].getElementsByTagName("td")[0];
             if (celdaNombre) {
                 const textoNombre = celdaNombre.textContent || celdaNombre.innerText;
-                
+
 
                 if (textoNombre.toLowerCase().includes(textoBusqueda)) {
                     filas[i].style.display = "";
@@ -534,7 +589,6 @@ function filtrarPacientes() {
     }
 }
 
-function editarPefil()
-{
-    window.location.href="EditarMedico.html";
+function editarPefil() {
+    window.location.href = "EditarMedico.html";
 }
