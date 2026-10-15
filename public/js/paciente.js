@@ -543,10 +543,10 @@ async function actualizarEstadoClinico() {
 
         console.log(`Evaluando Límites: ${min} - ${max}. Medición: ${hemoglobinaActual} g/dL, TEMPERATURA: ${temperaturaActual}°C`);
 
-        if (hemoglobinaActual < min) {
+        if (hemoglobinaActual < 14.8) {
             estadoDiv.textContent = `Estado: Alerta de Anemia (${hemoglobinaActual} g/dL)  TEMPERATURA: ${temperaturaActual} °C`;
             estadoDiv.className = "estado anemia";
-        } else if (hemoglobinaActual > max) {
+        } else if (hemoglobinaActual > 18.8) {
             estadoDiv.textContent = `Estado: Alerta de Poliglobulia / Policitemia (${hemoglobinaActual} g/dL)  TEMPERATURA: ${temperaturaActual} °C`;
             estadoDiv.className = "estado poliglobulia";
         } else {
