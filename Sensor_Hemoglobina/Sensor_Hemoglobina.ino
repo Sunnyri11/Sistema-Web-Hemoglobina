@@ -251,3 +251,67 @@ float calcularHemoglobina() {
   }
   return -1.0;
 }
+
+void procesarYEnviarFinal() {
+  lcd.clear();
+  lcd.print("Enviando...");
+
+  float sumaCrudaHb = 0;
+  float sumaCrudaTemp = 0;
+  for(int i = 0; i < numLecturas; i++) {
+    sumaCrudaHb = sumaCrudaHb + lecturasHb[i];
+    sumaCrudaTemp = sumaCrudaTemp + lecturasTemp[i];
+  }
+  float promedioCrudoHb = sumaCrudaHb / numLecturas;
+  float promedioCrudoTemp = sumaCrudaTemp / numLecturas;
+
+  float sumaFiltradaHb = 0;
+  float sumaFiltradaTemp = 0;
+  int contValidos = 0;
+
+  for(int i = 0; i < numLecturas; i++) {
+    if (abs(lecturasHb[i] - promedioCrudoHb) <= 3.0 && abs(lecturasTemp[i] - promedioCrudoTemp) <= 2.0) {
+      sumaFiltradaHb = sumaFiltradaHb + lecturasHb[i];
+      sumaFiltradaTemp = sumaFiltradaTemp + lecturasTemp[i];
+      contValidos = contValidos + 1;
+    }
+  }
+
+  if (contValidos > 0) {
+    float hbFinal = sumaFiltradaHb / contValidos;
+    float tempFinal = sumaFiltradaTemp / contValidos;
+    
+    lcd.clear();
+    lcd.print("Final Hb "); 
+    lcd.print(hbFinal, 1);
+    lcd.setCursor(0, 1);
+    lcd.print("Final T "); 
+    lcd.print(tempFinal, 1);
+    
+    String macDispositivo = WiFi.macAddress();
+    macDispositivo.replace(":", ""); 
+    
+    String rutaFirebase = "/dispositivos_activos/";
+    rutaFirebase = rutaFirebase + macDispositivo;
+
+    jsonGlobal.clear();
+    jsonGlobal.set("hemoglobina", hbFinal);
+    jsonGlobal.set("temperatura", tempFinal);
+    jsonGlobal.set("mensaje", "Exito");
+
+    if (Firebase.RTDB.setJSON(&fbdo, rutaFirebase.c_str(), &jsonGlobal)) {
+      Serial.println("Firebase actualizado con exito.");
+      Serial.print("Datos guardados en el nodo: "); 
+      Serial.println(rutaFirebase);
+    } else {
+      Serial.print("Error critico al subir a Firebase: "); 
+      Serial.println(fbdo.errorReason());
+    }
+    
+    delay(5000); 
+  } else {
+    lcd.clear();
+    lcd.print("Error de lectura");
+    delay(2000);
+  }
+}
