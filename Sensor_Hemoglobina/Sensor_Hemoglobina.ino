@@ -37,3 +37,14 @@ FirebaseJson jsonGlobal;
 
 unsigned long tiempoInicio = 0;
 const unsigned long intervaloMuestreo = 2000;
+
+void setup() {
+  Serial.begin(115200);
+
+  Wire.begin(17, 16); 
+  Wire1.begin(21, 22);
+
+  lcd.init(); 
+  lcd.backlight();
+  lcd.setCursor(0, 0);
+  lcd.print("Iniciando...");
