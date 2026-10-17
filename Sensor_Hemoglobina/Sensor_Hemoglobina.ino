@@ -89,3 +89,33 @@ void setup() {
   lcd.clear();
   lcd.print("Configurando..."); // Mensaje mientras inician los sensores
   // ---------------------------------------------------------
+
+  config.api_key = API_KEY;
+  config.database_url = DATABASE_URL;
+  config.signer.test_mode = true;
+  Firebase.begin(&config, &auth);
+
+  if (!particleSensor.begin(Wire1, I2C_SPEED_STANDARD)) {
+    Serial.println("Error MAX30105");
+    lcd.clear();
+    lcd.print("Error MAX30105");
+  } else {
+    particleSensor.setup(60, 4, 3, 100, 411, 4096);
+  }
+  
+  if (!mpu.begin(0x68, &Wire1)) {
+    Serial.println("Error MPU6050");
+  }
+  
+  if (!mlx.begin(0x5A, &Wire)) {
+    Serial.println("Error MLX90614");
+  }
+
+  delay(1500); 
+  lcd.clear();
+  lcd.print("Sistema Listo");
+  lcd.setCursor(0, 1);
+  lcd.print("Poner dedo...");
+  
+  tiempoInicio = millis();
+}
