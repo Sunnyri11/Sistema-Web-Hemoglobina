@@ -11,3 +11,6 @@
 #define WIFI_PASSWORD "EstWifi.0224"
 //#define WIFI_SSID "FABRI"
 //#define WIFI_PASSWORD "FABRICIOO2106199211"
+
+#define API_KEY "AIzaSyCuqu7VXYwn_o5F6F-m0GwJbP0lZ4FW7lQ"
+#define DATABASE_URL "hemoglobinaproy-default-rtdb.firebaseio.com"
