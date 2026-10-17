@@ -61,3 +61,31 @@ void setup() {
   lcd.setCursor(0, 0);
   lcd.print("WiFi Conectado");
   delay(1500); // Pausa para que el usuario alcance a leer el mensaje
+
+  // ---------------------------------------------------------
+  // MOSTRAR MAC EN PANTALLA LCD CON CUENTA REGRESIVA (15s)
+  // ---------------------------------------------------------
+  String macDispositivo = WiFi.macAddress();
+  Serial.print("Direccion MAC de este ESP32: ");
+  Serial.println(macDispositivo);
+
+  // Crear una version sin dos puntos para que quepa en la LCD
+  String macLcd = macDispositivo;
+  macLcd.replace(":", "");
+
+  for (int i = 15; i >= 0; i--) {
+    lcd.clear();
+    lcd.setCursor(0, 0);
+    lcd.print("Copie MAC (");
+    lcd.print(i);
+    lcd.print(")");
+    
+    lcd.setCursor(0, 1);
+    lcd.print(macLcd);
+    
+    delay(1000);
+  }
+
+  lcd.clear();
+  lcd.print("Configurando..."); // Mensaje mientras inician los sensores
+  // ---------------------------------------------------------
