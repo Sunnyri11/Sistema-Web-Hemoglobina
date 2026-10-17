@@ -23,3 +23,17 @@ LiquidCrystal_I2C lcd(0x27, 16, 2);
 long maxRojo = 0, minRojo = 1000000;
 long maxIR = 0, minIR = 1000000;
 long maxVerde = 0, minVerde = 1000000;
+
+// Cambiado a 10 lecturas
+const int numLecturas = 10;
+float lecturasHb[numLecturas];
+float lecturasTemp[numLecturas];
+int indiceLectura = 0;
+
+FirebaseData fbdo;
+FirebaseAuth auth;
+FirebaseConfig config;
+FirebaseJson jsonGlobal;
+
+unsigned long tiempoInicio = 0;
+const unsigned long intervaloMuestreo = 2000;
