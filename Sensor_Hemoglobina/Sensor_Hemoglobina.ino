@@ -18,4 +18,8 @@
 MAX30105 particleSensor;
 Adafruit_MLX90614 mlx = Adafruit_MLX90614();
 Adafruit_MPU6050 mpu;
-LiquidCrystal_I2C lcd(0x27, 16, 2);
+LiquidCrystal_I2C lcd(0x27, 16, 2); 
+
+long maxRojo = 0, minRojo = 1000000;
+long maxIR = 0, minIR = 1000000;
+long maxVerde = 0, minVerde = 1000000;
