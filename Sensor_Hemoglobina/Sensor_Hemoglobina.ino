@@ -48,3 +48,16 @@ void setup() {
   lcd.backlight();
   lcd.setCursor(0, 0);
   lcd.print("Iniciando...");
+
+  WiFi.begin(WIFI_SSID, WIFI_PASSWORD);
+  Serial.print("Conectando WiFi...");
+  while (WiFi.status() != WL_CONNECTED) { 
+    delay(500); 
+    Serial.print("."); 
+  }
+  Serial.println(" [OK]");
+
+  lcd.clear();
+  lcd.setCursor(0, 0);
+  lcd.print("WiFi Conectado");
+  delay(1500); // Pausa para que el usuario alcance a leer el mensaje
