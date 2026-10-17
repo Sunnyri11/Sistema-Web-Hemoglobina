@@ -215,3 +215,39 @@ void loop() {
     tiempoInicio = millis();
   }
 }
+
+void reiniciarVariables() {
+  indiceLectura = 0;
+  maxRojo = 0; minRojo = 1000000;
+  maxIR = 0; minIR = 1000000;
+  maxVerde = 0; minVerde = 1000000;
+  tiempoInicio = millis();
+}
+
+float calcularHemoglobina() {
+  float dcRojo = (maxRojo + minRojo) / 2.0;
+  float dcIR = (maxIR + minIR) / 2.0;
+  
+  float acRojoBruto = maxRojo - minRojo;
+  float acIRBruto = maxIR - minIR;
+  float acVerde = maxVerde - minVerde;
+
+  float acRojo = acRojoBruto - acVerde;
+  float acIR = acIRBruto - acVerde;
+
+  if (acRojo < 0) acRojo = acRojoBruto;
+  if (acIR < 0) acIR = acIRBruto;
+
+  if (dcRojo > 0 && dcIR > 0) {
+    float piRojo = acRojo / dcRojo;
+    float piIR = acIR / dcIR;
+    if (piIR > 0.0001) {
+      float R = piRojo / piIR;
+      float hb = 19.5 - (6.5 * R);
+      if (hb > 20.0) hb = 20.0;
+      if (hb < 5.0) hb = 5.0;
+      return hb;
+    }
+  }
+  return -1.0;
+}
