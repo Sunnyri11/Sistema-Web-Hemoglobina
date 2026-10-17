@@ -24,7 +24,6 @@ long maxRojo = 0, minRojo = 1000000;
 long maxIR = 0, minIR = 1000000;
 long maxVerde = 0, minVerde = 1000000;
 
-// Cambiado a 10 lecturas
 const int numLecturas = 10;
 float lecturasHb[numLecturas];
 float lecturasTemp[numLecturas];
@@ -60,16 +59,12 @@ void setup() {
   lcd.clear();
   lcd.setCursor(0, 0);
   lcd.print("WiFi Conectado");
-  delay(1500); // Pausa para que el usuario alcance a leer el mensaje
+  delay(1500); 
 
-  // ---------------------------------------------------------
-  // MOSTRAR MAC EN PANTALLA LCD CON CUENTA REGRESIVA (15s)
-  // ---------------------------------------------------------
   String macDispositivo = WiFi.macAddress();
   Serial.print("Direccion MAC de este ESP32: ");
   Serial.println(macDispositivo);
 
-  // Crear una version sin dos puntos para que quepa en la LCD
   String macLcd = macDispositivo;
   macLcd.replace(":", "");
 
@@ -87,8 +82,7 @@ void setup() {
   }
 
   lcd.clear();
-  lcd.print("Configurando..."); // Mensaje mientras inician los sensores
-  // ---------------------------------------------------------
+  lcd.print("Configurando..."); 
 
   config.api_key = API_KEY;
   config.database_url = DATABASE_URL;
@@ -161,3 +155,63 @@ void loop() {
   
   if (valorVerde > maxVerde) maxVerde = valorVerde;
   if (valorVerde < minVerde) minVerde = valorVerde;
+
+  if (millis() - tiempoInicio >= intervaloMuestreo) {
+    float tempActual = mlx.readObjectTempC();
+    float hbActual = calcularHemoglobina();
+
+    if (tempActual < 28.0) {
+      lcd.clear();
+      lcd.setCursor(0, 0);
+      lcd.print("Temperatura");
+      lcd.setCursor(0, 1);
+      lcd.print("baja");
+      reiniciarVariables();
+      delay(1500);
+      return;
+    } else if (tempActual > 42.0) {
+      lcd.clear();
+      lcd.setCursor(0, 0);
+      lcd.print("Temperatura");
+      lcd.setCursor(0, 1);
+      lcd.print("alta");
+      reiniciarVariables();
+      delay(1500);
+      return;
+    }
+
+    if (hbActual > 0) {
+      lecturasHb[indiceLectura] = hbActual;
+      lecturasTemp[indiceLectura] = tempActual;
+      indiceLectura = indiceLectura + 1;
+      
+      Serial.print("Captura [");
+      Serial.print(indiceLectura);
+      Serial.print("/10] | Hb ");
+      Serial.print(hbActual);
+      Serial.print(" | T ");
+      Serial.println(tempActual);
+      
+      lcd.clear();
+      lcd.setCursor(0, 0);
+      lcd.print("Analisis "); 
+      lcd.print(indiceLectura); 
+      lcd.print("/10");
+      lcd.setCursor(0, 1);
+      lcd.print("Hb "); 
+      lcd.print(hbActual, 1);
+      lcd.print(" T "); 
+      lcd.print(tempActual, 1);
+    }
+
+    if (indiceLectura >= numLecturas) {
+      procesarYEnviarFinal();
+      reiniciarVariables();
+    }
+
+    maxRojo = 0; minRojo = 1000000;
+    maxIR = 0; minIR = 1000000;
+    maxVerde = 0; minVerde = 1000000;
+    tiempoInicio = millis();
+  }
+}
