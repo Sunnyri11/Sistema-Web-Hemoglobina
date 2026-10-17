@@ -119,3 +119,20 @@ void setup() {
   
   tiempoInicio = millis();
 }
+
+void loop() {
+  sensors_event_t a, g, t;
+  mpu.getEvent(&a, &g, &t);
+
+  if (abs(g.gyro.x) > 0.3 || abs(g.gyro.y) > 0.3 || abs(g.gyro.z) > 0.3) {
+    if (indiceLectura > 0) {
+      Serial.println("Movimiento detectado.");
+      lcd.clear();
+      lcd.print("No se mueva!");
+      reiniciarVariables();
+      delay(1500);
+      lcd.clear();
+      lcd.print("Poner dedo...");
+    }
+    return;
+  }
