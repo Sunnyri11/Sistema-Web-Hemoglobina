@@ -14,3 +14,8 @@
 
 #define API_KEY "AIzaSyCuqu7VXYwn_o5F6F-m0GwJbP0lZ4FW7lQ"
 #define DATABASE_URL "hemoglobinaproy-default-rtdb.firebaseio.com"
+
+MAX30105 particleSensor;
+Adafruit_MLX90614 mlx = Adafruit_MLX90614();
+Adafruit_MPU6050 mpu;
+LiquidCrystal_I2C lcd(0x27, 16, 2);
