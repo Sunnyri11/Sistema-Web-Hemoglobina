@@ -136,3 +136,28 @@ void loop() {
     }
     return;
   }
+
+  long valorRojo = particleSensor.getRed();
+  long valorIR = particleSensor.getIR();
+  long valorVerde = particleSensor.getGreen();
+
+  if (valorIR < 50000) {
+    if (indiceLectura > 0) {
+      lcd.clear();
+      lcd.print("Dedo retirado");
+      reiniciarVariables();
+      delay(1500);
+      lcd.clear();
+      lcd.print("Poner dedo...");
+    }
+    return;
+  }
+
+  if (valorRojo > maxRojo) maxRojo = valorRojo;
+  if (valorRojo < minRojo) minRojo = valorRojo;
+  
+  if (valorIR > maxIR) maxIR = valorIR;
+  if (valorIR < minIR) minIR = valorIR;
+  
+  if (valorVerde > maxVerde) maxVerde = valorVerde;
+  if (valorVerde < minVerde) minVerde = valorVerde;
