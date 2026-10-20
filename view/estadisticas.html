@@ -1,0 +1,481 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sistema HB - Inteligencia Analítica Epidemiológica</title>
+    <style>
+        :root {
+            --bg-primary: #f8fafc;
+            --card-bg: #ffffff;
+            --text-main: #0f172a;
+            --text-muted: #64748b;
+            --border-color: #e2e8f0;
+            --primary: #2563eb;
+            --primary-hover: #1d4ed8;
+            --color-normal: #10b981;
+            --color-anemia: #ef4444;
+            --color-poliglobulia: #f59e0b;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+        }
+
+        body {
+            background-color: var(--bg-primary);
+            color: var(--text-main);
+            padding: 24px;
+        }
+
+        main {
+            max-width: 1400px;
+            margin: 0 auto;
+            display: flex;
+            flex-direction: column;
+            gap: 24px;
+        }
+
+        /* Encabezado Principal */
+        .header-banner {
+            background: linear-gradient(135deg, #1e1b4b 0%, #312e81 100%);
+            color: #ffffff;
+            padding: 28px 40px;
+            border-radius: 16px;
+            box-shadow: 0 10px 15px -3px rgba(30, 27, 75, 0.1);
+        }
+
+        .header-banner h1 {
+            font-size: 26px;
+            font-weight: 700;
+        }
+
+        .header-banner p {
+            margin-top: 6px;
+            color: #c7d2fe;
+            font-size: 14px;
+        }
+
+        /* Panel de Control de Filtros Cruzados */
+        .filtros-panel {
+            background: var(--card-bg);
+            padding: 20px;
+            border-radius: 14px;
+            border: 1px solid var(--border-color);
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.02);
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)) 140px;
+            gap: 16px;
+            align-items: end;
+        }
+
+        .filtro-grupo {
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+        }
+
+        .filtro-grupo label {
+            font-size: 11px;
+            font-weight: 700;
+            color: var(--text-muted);
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .filtro-grupo select {
+            padding: 10px;
+            border-radius: 8px;
+            border: 1px solid var(--border-color);
+            background: #fdfdfd;
+            font-size: 14px;
+            color: var(--text-main);
+            outline: none;
+            cursor: pointer;
+            transition: border-color 0.2s;
+        }
+
+        .filtro-grupo select:focus {
+            border-color: var(--primary);
+        }
+
+        .btn-reset {
+            width: 100%;
+            padding: 11px;
+            border-radius: 8px;
+            border: none;
+            background: #e2e8f0;
+            color: #334155;
+            font-weight: 600;
+            font-size: 13px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+
+        .btn-reset:hover {
+            background: #cbd5e1;
+        }
+
+        /* Cuadrícula de KPIs */
+        .kpi-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+            gap: 16px;
+        }
+
+        .kpi-card {
+            background: var(--card-bg);
+            border: 1px solid var(--border-color);
+            padding: 20px;
+            border-radius: 12px;
+            display: flex;
+            flex-direction: column;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.01);
+            transition: transform 0.2s;
+        }
+
+        .kpi-card:hover {
+            transform: translateY(-2px);
+        }
+
+        .kpi-card .kpi-title {
+            font-size: 11px;
+            color: var(--text-muted);
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .kpi-card .kpi-value {
+            font-size: 32px;
+            font-weight: 700;
+            margin-top: 4px;
+            color: var(--text-main);
+        }
+
+        /* Estructura de Bloques Analíticos (Gráficos) */
+        .grid-graficos {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 24px;
+        }
+
+        @media (max-width: 968px) {
+            .grid-graficos {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        .card {
+            background: var(--card-bg);
+            border: 1px solid var(--border-color);
+            border-radius: 16px;
+            padding: 24px;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.02);
+            display: flex;
+            flex-direction: column;
+        }
+
+        .card h3 {
+            margin-top: 0;
+            font-size: 15px;
+            font-weight: 700;
+            color: var(--text-main);
+            border-bottom: 2px solid var(--border-color);
+            padding-bottom: 10px;
+            margin-bottom: 16px;
+        }
+
+        canvas {
+            width: 100%;
+            height: 240px;
+            display: block;
+        }
+
+        /* Tabla de Desglose de Telemetría */
+        .table-wrapper {
+            overflow-x: auto;
+            max-height: 400px;
+            overflow-y: auto;
+            border-radius: 8px;
+            border: 1px solid var(--border-color);
+        }
+
+        .table-wrapper::-webkit-scrollbar {
+            width: 6px;
+            height: 6px;
+        }
+
+        .table-wrapper::-webkit-scrollbar-track {
+            background: transparent;
+        }
+
+        .table-wrapper::-webkit-scrollbar-thumb {
+            background: #cbd5e1;
+            border-radius: 10px;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            text-align: left;
+            font-size: 13px;
+        }
+
+        th {
+            position: sticky;
+            top: 0;
+            background: #f8fafc;
+            color: var(--text-muted);
+            padding: 14px 16px;
+            font-weight: 600;
+            text-transform: uppercase;
+            font-size: 11px;
+            letter-spacing: 0.5px;
+            border-bottom: 2px solid var(--border-color);
+            z-index: 10;
+        }
+
+        td {
+            padding: 12px 16px;
+            border-bottom: 1px solid var(--border-color);
+            color: var(--text-main);
+            vertical-align: middle;
+        }
+
+        tbody tr:hover {
+            background-color: #f8fafc;
+        }
+
+        /* Etiquetas Dinámicas de Diagnósticos */
+        .badge {
+            display: inline-block;
+            padding: 4px 12px;
+            border-radius: 50px;
+            font-size: 11px;
+            font-weight: 600;
+            text-align: center;
+            min-width: 90px;
+        }
+
+        .badge-normal {
+            background: #ecfdf5;
+            color: var(--color-normal);
+            border: 1px solid rgba(16, 185, 129, 0.15);
+        }
+
+        .badge-anemia {
+            background: #fef2f2;
+            color: var(--color-anemia);
+            border: 1px solid rgba(239, 68, 68, 0.15);
+        }
+
+        .badge-poliglobulia {
+            background: #fffbeb;
+            color: var(--color-poliglobulia);
+            border: 1px solid rgba(245, 158, 11, 0.15);
+        }
+    </style>
+</head>
+<body>
+
+    <main>
+        <!-- Banner Superior -->
+        <div class="header-banner">
+            <h1>Módulo de Inteligencia Sanitaria Avanzada</h1>
+            <p>Análisis epidemiológico multinivel cruzado de variables demográficas y telemetría de hardware.</p>
+        </div>
+
+        <!-- Panel de Filtros Multi-Criterio -->
+        <div class="filtros-panel">
+            <div class="filtro-grupo">
+                <label for="fAnio">Año Cronológico</label>
+                <select id="fAnio" onchange="ejecutarFiltroCruzado()">
+                    <option value="todos">Todos los años</option>
+                    <option value="2026">2026</option>
+                    <option value="2025">2025</option>
+                </select>
+            </div>
+            
+            <div class="filtro-grupo">
+                <label for="fCiudad">Ciudad / Altura</label>
+                <select id="fCiudad" onchange="ejecutarFiltroCruzado()">
+                    <option value="todos">Todas las regiones</option>
+                    <option value="Nuestra Señora de La Paz">Nuestra Señora de La Paz (3640m)</option>
+                </select>
+            </div>
+            
+            <div class="filtro-grupo">
+                <label for="fGenero">Género Biológico</label>
+                <select id="fGenero" onchange="ejecutarFiltroCruzado()">
+                    <option value="todos">Todos los géneros</option>
+                    <option value="Masculino">Masculino</option>
+                    <option value="Femenino">Femenino</option>
+                </select>
+            </div>
+            
+            <div class="filtro-grupo">
+                <label for="fEdad">Rango Etario</label>
+                <select id="fEdad" onchange="ejecutarFiltroCruzado()">
+                    <option value="todos">Todas las edades</option>
+                    <option value="infantil">Infantil (0 - 12 años)</option>
+                    <option value="adolescente">Adolescentes (13 - 17 años)</option>
+                    <option value="adulto">Adultos (18+ años)</option>
+                </select>
+            </div>
+            
+            <div class="filtro-grupo">
+                <label for="fEstado">Dictamen Clínico</label>
+                <select id="fEstado" onchange="ejecutarFiltroCruzado()">
+                    <option value="todos">Todos los estados</option>
+                    <option value="Anemia">Alerta de Anemia</option>
+                    <option value="Estable">Fisiológicamente Estable</option>
+                    <option value="Poliglobulia">Alerta de Poliglobulia</option>
+                </select>
+            </div>
+
+            <div class="filtro-grupo">
+                <label for="fTermica">Condición Térmica</label>
+                <select id="fTermica" onchange="ejecutarFiltroCruzado()">
+                    <option value="todos">Cualquier temperatura</option>
+                    <option value="normal">Normal (36.0°C - 37.3°C)</option>
+                    <option value="fiebre">Febrícula / Fiebre (> 37.3°C)</option>
+                    <option value="hipo">Hipotermia (&lt; 36.0°C)</option>
+                </select>
+            </div>
+            
+            <button class="btn-reset" onclick="restablecerFiltrosGenerales()">Restablecer</button>
+        </div>
+
+        <!-- Cuadrícula de KPIs -->
+        <div class="kpi-grid">
+            <div class="kpi-card" style="border-left: 4px solid var(--primary);">
+                <span class="kpi-title">Muestras Filtradas</span>
+                <span class="kpi-value" id="kpiTotal">0</span>
+            </div>
+            <div class="kpi-card" style="border-left: 4px solid var(--color-anemia);">
+                <span class="kpi-title">Muestras con Anemia</span>
+                <span class="kpi-value" id="kpiAnemia" style="color: var(--color-anemia);">0</span>
+            </div>
+            <div class="kpi-card" style="border-left: 4px solid var(--color-normal);">
+                <span class="kpi-title">Muestras Estables</span>
+                <span class="kpi-value" id="kpiEstable" style="color: var(--color-normal);">0</span>
+            </div>
+            <div class="kpi-card" style="border-left: 4px solid var(--color-poliglobulia);">
+                <span class="kpi-title">Casos de Poliglobulia</span>
+                <span class="kpi-value" id="kpiPoliglobulia" style="color: var(--color-poliglobulia);">0</span>
+            </div>
+        </div>
+
+        <!-- Contenedor de Gráficos -->
+        <div class="grid-graficos">
+            <div class="card">
+                <h3>Curva Evolutiva de Hemoglobina (g/dL)</h3>
+                <canvas id="graficoHemoglobina"></canvas>
+            </div>
+            <div class="card">
+                <h3>Variación Cronológica de Temperatura (°C)</h3>
+                <canvas id="graficoTemperatura"></canvas>
+            </div>
+        </div>
+
+               <!-- BOTÓN ENTRADA AL POP-UP -->
+        <div style="text-align: right; margin-top: 10px;">
+            <button class="btn-reset" onclick="abrirPopUpTabla()" style="background: var(--primary); color: #ffffff; width: auto; padding: 12px 24px;">
+                Ver Tabla Detallada (Pop-up)
+            </button>
+        </div>
+
+        <!-- ESTRUCTURA DEL POP-UP MODAL (Inicialmente oculto) -->
+        <div id="modalTablaAnalitica" style="
+            display: none; 
+            position: fixed; 
+            z-index: 2000; 
+            left: 0; 
+            top: 0; 
+            width: 100%; 
+            height: 100%; 
+            background-color: rgba(15, 23, 42, 0.6); 
+            backdrop-filter: blur(4px);
+            align-items: center; 
+            justify-content: center;
+            padding: 20px;
+        ">
+            <!-- Contenedor de la Tarjeta dentro del Pop-up -->
+            <div class="card" style="
+                width: 100%; 
+                max-width: 1250px; 
+                max-height: 90vh; 
+                position: relative; 
+                box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.15);
+                animation: modalFadeIn 0.3s ease;
+            ">
+                <!-- Botón de Cerrar (X) -->
+                <button onclick="cerrarPopUpTabla()" style="
+                    position: absolute;
+                    top: 16px;
+                    right: 20px;
+                    background: #f1f5f9;
+                    border: none;
+                    font-size: 20px;
+                    font-weight: bold;
+                    color: var(--text-muted);
+                    width: 36px;
+                    height: 36px;
+                    border-radius: 50%;
+                    cursor: pointer;
+                    display: flex;
+                    align-items: center;
+                    justify-content: center;
+                    transition: all 0.2s;
+                " onmouseover="this.style.background='#e2e8f0'; this.style.color='var(--color-anemia)'" onmouseout="this.style.background='#f1f5f9'; this.style.color='var(--text-muted)'">
+                    ×
+                </button>
+
+                <h3>Desglose Cronológico de Análisis Clínicos Procesados</h3>
+                
+                <div class="table-wrapper" style="max-height: calc(90vh - 120px);">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>ID Usuario</th>
+                                <th>Fecha Análisis</th>
+                                <th>Hemoglobina</th>
+                                <th>Temperatura</th>
+                                <th>Edad Reg.</th>
+                                <th>Ciudad / Región</th>
+                                <th>Altitud</th>
+                                <th>Género</th>
+                                <th>Diagnóstico Clínico</th>
+                            </tr>
+                        </thead>
+                        <tbody id="tablaResultados">
+                            <tr>
+                                <td colspan="9" style="text-align: center; color: var(--text-muted); padding: 30px;">
+                                    Sincronizando datos con el servidor central...
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <!-- Animación de Entrada para CSS -->
+        <style>
+            @keyframes modalFadeIn {
+                from { opacity: 0; transform: translateY(15px); }
+                to { opacity: 1; transform: translateY(0); }
+            }
+        </style>
+
+    </main>
+
+    <!-- Enlace al Script lógico -->
+    <script src="../public/js/config.js"></script>
+    <script src="../public/js/estadistica.js"></script>
+</body>
+</html>

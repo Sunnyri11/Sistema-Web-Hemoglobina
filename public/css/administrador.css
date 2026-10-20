@@ -64,6 +64,28 @@ nav {
     color: #ffffff;
 }
 
+.btn-estadis {
+    display: inline-block; 
+    text-decoration: none; 
+    background-color: #1c2434; 
+    color: #60a5fa; 
+    border: 1px solid #1e3a8a; 
+    padding: 8px 16px;
+    border-radius: 8px;
+    font-weight: 600;
+    font-size: 13px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    text-align: center;
+}
+
+.btn-estadis:hover {
+    background-color: #3b82f6; 
+    color: #ffffff;
+    border-color: #3b82f6; 
+}
+
+
 /* --- CONTENEDOR PRINCIPAL --- */
 main {
     max-width: 1600px;
