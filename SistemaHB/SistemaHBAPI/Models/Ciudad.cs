@@ -14,6 +14,8 @@ public partial class Ciudad
     public int? IdDepartamento { get; set; }
 
     public virtual Departamento? IdDepartamentoNavigation { get; set; }
+    public virtual ICollection<Persona> Personas { get; set; } = new List<Persona>();
+
 
     public virtual ICollection<RangoHemoglobina> RangoHemoglobinas { get; set; } = new List<RangoHemoglobina>();
 }

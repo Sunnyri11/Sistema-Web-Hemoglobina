@@ -1,10 +1,13 @@
-using System.Text;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.AspNetCore.HttpOverrides;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
+using QuestPDF.Infrastructure;
 using Scalar.AspNetCore;
+using SistemaHB.Services;
 using SistemaHBAPI.Models;
 using SistemaHBAPI.Services;
+using System.Text;
 
 namespace SistemaHBAPI
 {
@@ -18,8 +21,9 @@ namespace SistemaHBAPI
             builder.Services.AddControllers()
                 .AddNewtonsoftJson(options =>
                     options.SerializerSettings.ReferenceLoopHandling = Newtonsoft.Json.ReferenceLoopHandling.Ignore);
-
-            // 1. Configurar el esquema de autenticación JWT
+            builder.Services.AddTransient<IEmailService, EmailService>();
+            
+            QuestPDF.Settings.License = LicenseType.Community;
             builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
                 .AddJwtBearer(options =>
                 {
@@ -29,7 +33,7 @@ namespace SistemaHBAPI
                         ValidateAudience = true,
                         ValidateLifetime = true,
                         ValidateIssuerSigningKey = true,
-                        ValidIssuer = "https://localhost:7176",
+                        ValidIssuer = "https://onrender.com",
                         ValidAudience = "SistemaHBAutenticacionApi",
                         IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes("TuClaveSecretaSuperSeguraDeAlMenos32Bytes!"))
                     };
@@ -38,52 +42,64 @@ namespace SistemaHBAPI
             // 2. Configurar los servicios de Autorización
             builder.Services.AddAuthorization();
 
-            // Learn more about configuring OpenAPI at https://aka.ms/aspnet/openapi
+            // Configurar OpenAPI para generación de documentos de endpoints
             builder.Services.AddOpenApi();
 
-            // Configuración de la conexión a MySQL/MariaDB en el puerto 3307
-            var connectionString = "server=localhost;port=3307;database=sistemahb;uid=root;password=";
+            // 3. Cadena de conexión corregida para Aiven con SSL Obligatorio
+            // NOTA: Asegúrate de reemplazar 'REEMPLAZA_CON_TU_SUBDOMINIO' por el subdominio real que te da Aiven (ejemplo: mysql-mi-proyecto)
+            var connectionString = "Server=mysql-1e7e449b-sistemahb.g.aivencloud.com;Port=13585;Database=sistemahb;Uid=avnadmin;Pwd=AVNS_RAotqvpMbH5nDsAc7GR;SslMode=Required;AllowPublicKeyRetrieval=True;";
 
             builder.Services.AddDbContext<SistemaHBContext>(options =>
             {
-                options.UseMySql(connectionString, ServerVersion.AutoDetect(connectionString));
+                options.UseMySql(connectionString, new MySqlServerVersion(new Version(8, 4, 0)), mySqlOptions =>
+                {
+                    // Añade resiliencia para mitigar fallos transitorios en nubes como Render
+                    mySqlOptions.EnableRetryOnFailure(
+                        maxRetryCount: 5,
+                        maxRetryDelay: TimeSpan.FromSeconds(30),
+                        errorNumbersToAdd: null
+                    );
+                });
             });
 
-            //builder.Services.AddHostedService<FirebaseSincronizadorWorker>();
-
+            // 4. Configurar CORS flexible (Soporta origen 'null', file:///, localhost y móviles)
             builder.Services.AddCors(options =>
             {
                 options.AddPolicy("PermitirTodo", policy =>
                 {
-                    policy.AllowAnyOrigin()
+                    policy.SetIsOriginAllowed(_ => true)
                           .AllowAnyMethod()
-                          .AllowAnyHeader();
+                          .AllowAnyHeader()
+                          .AllowCredentials();
                 });
             });
 
+            // 5. Configurar encabezados reenviados para compatibilidad nativa HTTP/HTTPS en Render
+            builder.Services.Configure<ForwardedHeadersOptions>(options =>
+            {
+                options.ForwardedHeaders = ForwardedHeaders.XForwardedFor | ForwardedHeaders.XForwardedProto;
+                options.KnownNetworks.Clear();
+                options.KnownProxies.Clear();
+            });
+            builder.Services.AddHttpClient();
             var app = builder.Build();
 
-            // Configure the HTTP request pipeline.
-            if (app.Environment.IsDevelopment())
+            // 6. Habilitar middleware de encabezados reenviados en la primera línea
+            app.UseForwardedHeaders();
+
+            // 7. OpenAPI y documentación interactiva de Scalar habilitados globalmente
+            app.MapOpenApi();
+            app.MapScalarApiReference(options =>
             {
-                // 1. Primero se mapea el endpoint que genera el JSON
-                app.MapOpenApi();
+                options.WithOpenApiRoutePattern("/openapi/v1.json");
+            });
 
-                // 2. Luego se inicializa Scalar apuntando explícitamente a ese documento JSON
-                app.MapScalarApiReference(options =>
-                {
-                    options.WithOpenApiRoutePattern("/openapi/v1.json");
-                });
-            }
-
-            app.UseHttpsRedirection();
-
-            // CORS siempre debe ejecutarse antes de la autenticación para permitir pre-requests (OPTIONS)
+            // 8. Middleware de CORS (Debe estar estrictamente ANTES de la autenticación)
             app.UseCors("PermitirTodo");
 
-            // 3. Middlewares de seguridad indispensables en orden estricto
-            app.UseAuthentication(); // Primero identifica quién es el usuario (Verifica el Token JWT)
-            app.UseAuthorization();  // Luego verifica si tiene permisos de acceso
+            // 9. Middlewares de seguridad indispensables
+            app.UseAuthentication();
+            app.UseAuthorization();
 
             app.MapControllers();
 

@@ -9,6 +9,7 @@ public class RANGOHEMOGLOBINAFORMCLS
     public int IdCiudad { get; set; }
 
     public int IdGenero { get; set; }
+    public int? IdEdad { get; set; }
 
     public decimal ValorMin { get; set; }
 

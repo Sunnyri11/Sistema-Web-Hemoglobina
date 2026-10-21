@@ -12,6 +12,7 @@ public partial class NivelHemoglobina
     public int IdRangoHemoglobina { get; set; }
 
     public decimal ValorHemoglobina { get; set; }
+    public decimal Temperatura {  get; set; }
 
     public DateOnly FechaAnalisis { get; set; }
 

@@ -12,5 +12,7 @@ public class NIVELHEMOGLOBINAFORMCLS
 
     public decimal ValorHemoglobina { get; set; }
 
+    public decimal Temperatura { get; set; }
+
     public DateOnly FechaAnalisis { get; set; }
 }
