@@ -147,7 +147,7 @@ Proyecto **en desarrollo** bajo XP: 5 iteraciones de 2 semanas, 10 historias de 
 | Rol | Integrante |
 |---|---|
 | 👨‍🏫 Docente | Ing. Georgina Aruquipa Gutierrez |
-| 👩‍💻👨‍💻 Desarrolladores | *Agrega aquí los nombres del equipo* |
+| 👩‍💻👨‍💻 Desarrolladores |-Jhoel Flores -Wilder Chura -Fabricio Pinaya -Axel Canqui|
 
 <div align="center">
 
