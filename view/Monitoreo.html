@@ -13,7 +13,7 @@
 <body>
 
   <div class="dashboard-wrapper">
-    
+
     <!-- 1. BARRA DE NAVEGACIÓN SUPERIOR FIJA -->
     <header class="top-navbar">
       <div class="nav-brand-container">
@@ -31,7 +31,6 @@
           <span class="status-dot-online"></span>
           <span class="status-text" id="statusOnlineText">En línea</span>
         </div>
-        <!-- Botón de Cerrar Sesión ubicado en la esquina superior derecha -->
         <button class="btn-logout-icon" id="btnCerrarSesion" title="Cerrar Sesión">
           <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path><polyline points="16 17 21 12 16 7"></polyline><line x1="21" y1="12" x2="9" y2="12"></line></svg>
         </button>
@@ -40,62 +39,56 @@
 
     <!-- CONTENEDOR PRINCIPAL DE DOS COLUMNAS -->
     <div class="container-grid">
-      
+
       <!-- COLUMNA IZQUIERDA: PERFIL, ESTADO CLÍNICO Y WALLE-HB -->
       <div class="left-section">
-        
-        <!-- Tarjeta de Datos del Usuario con Botón de Editar al Costado -->
-      <div class="paciente-info-card">
-        <div class="paciente-profile-header">
-          <div class="avatar-circle">
-            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg>
+
+        <div class="paciente-info-card">
+          <div class="paciente-profile-header">
+            <div class="avatar-circle">
+              <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg>
+            </div>
+            <div class="paciente-names">
+              <h4 id="nombrePacienteDisplay">Cargando...</h4>
+              <span id="correoPacienteDisplay">sincronizando...</span>
+            </div>
+            <a class="btn-edit-profile" href="EditarPaciente.html" title="Editar Perfil">
+              <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path></svg>
+            </a>
           </div>
-          <div class="paciente-names">
-            <h4 id="nombrePacienteDisplay">Cargando...</h4>
-            <span id="correoPacienteDisplay">sincronizando...</span>
+
+          <div class="paciente-details-grid">
+            <div class="detail-row"><span>Edad</span> <strong id="edadDisplay">-</strong></div>
+            <div class="detail-row"><span>Departamento</span> <strong id="deptoDisplay">-</strong></div>
+            <div class="detail-row"><span>Ciudad</span> <strong id="ciudadDisplay">-</strong></div>
+            <div class="detail-row"><span>Tipo de Sangre</span> <strong id="sangreDisplay">-</strong></div>
           </div>
-          <!-- Botón de Editar Perfil al costado de la información -->
-          <a class="btn-edit-profile" href="EditarPaciente.html" title="Editar Perfil">
-            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path></svg>
-          </a>
         </div>
 
-        <div class="paciente-details-grid">
-          <div class="detail-row"><span>Edad</span> <strong id="edadDisplay">-</strong></div>
-          <div class="detail-row"><span>Departamento</span> <strong id="deptoDisplay">-</strong></div>
-          <div class="detail-row"><span>Ciudad</span> <strong id="ciudadDisplay">-</strong></div>
-          <div class="detail-row"><span>Tipo de Sangre</span> <strong id="sangreDisplay">-</strong></div>
+        <!-- Estado clínico (se rellena desde JS) -->
+        <div id="estadoPaciente" class="estado estable">
+          <div class="estado-icon-wrapper">
+            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg>
+          </div>
+          <div class="estado-text-content">
+            <span class="estado-title-label">ESTADO</span>
+            <strong>Cargando...</strong>
+          </div>
         </div>
-      </div>
 
-      <!-- Tarjeta de Estado Clínico y Temperatura con Marco Dinámico -->
-      <div id="estadoPaciente" class="estado estable">
-        <div class="estado-icon-wrapper">
-          <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg>
-        </div>
-        <div class="estado-text-content">
-          <span class="estado-title-label">ESTADO</span>
-          <strong>FISIOLÓGICAMENTE ESTABLE</strong>
-          <span class="estado-detalle-medicion">(15.26 G/DL) TEMPERATURA: 36.88 °C</span>
-        </div>
-      </div>
-
-        <!-- APARTADO WALLE-HB (Mantenido intacto y ubicado debajo de las características) -->
+        <!-- WALLE-HB -->
         <div id="alertasWalleHB" class="contenedor-ia-reporte" style="display: none;">
           <h4 class="titulo-ia">🤖 Diagnóstico Evolutivo de Walle-HB</h4>
           <p id="textoAlertaWalleHB" class="texto-alerta-ia"></p>
 
           <h5 class="subtitulo-ia">📋 Recomendaciones de Salud Sugeridas:</h5>
-          <ul id="listaRecomendacionesWalleHB" class="lista-ia">
-            <!-- Se inyectan dinámicamente desde JavaScript -->
-          </ul>
+          <ul id="listaRecomendacionesWalleHB" class="lista-ia"></ul>
         </div>
       </div>
 
       <!-- COLUMNA DERECHA: FILTROS, GRÁFICAS Y BOTONES INFERIORES -->
       <div class="right-section">
-        
-        <!-- Filtros de tiempo superiores -->
+
         <div class="filtros-contenedor">
           <div class="filtros-header-row">
             <span class="filtros-label">
@@ -103,19 +96,19 @@
               Filtrar historial por tiempo:
             </span>
           </div>
+          <!-- Los clics se manejan desde paciente.js con data-filtro -->
           <div class="filtros-botones">
-            <button class="btn-filtro" onclick="aplicarFiltroTiempo('dias')">Hoy</button>
-            <button class="btn-filtro" onclick="aplicarFiltroTiempo('semanas')">7 Días</button>
-            <button class="btn-filtro" onclick="aplicarFiltroTiempo('meses')">Mes</button>
-            <button class="btn-filtro" onclick="aplicarFiltroTiempo('anos')">Año</button>
-            <button class="btn-filtro active" onclick="aplicarFiltroTiempo('todos')">
+            <button class="btn-filtro" data-filtro="dias">Hoy</button>
+            <button class="btn-filtro" data-filtro="semanas">7 Días</button>
+            <button class="btn-filtro" data-filtro="meses">Mes</button>
+            <button class="btn-filtro" data-filtro="anos">Año</button>
+            <button class="btn-filtro active" data-filtro="todos">
               <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-right: 4px;"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path><circle cx="12" cy="12" r="3"></circle></svg>
               Ver Todo
             </button>
           </div>
         </div>
 
-        <!-- Contenedores de Gráficos Centrados y Proporcionales -->
         <div class="charts-scroll-area">
           <div class="chart-wrapper-card">
             <h3>
@@ -138,7 +131,6 @@
           </div>
         </div>
 
-        <!-- Botones de Acción Inferiores Ocupando Toda la Parte Inferior -->
         <div class="bottom-action-buttons">
           <button class="btn-action-card btn-analisis-card" onclick="abrirModalAnalisis()">
             <div class="card-icon-wrapper">
@@ -178,7 +170,8 @@
     <div id="modalAnalisis" class="modal-overlay">
       <div class="modal-box">
         <button class="btn-close-modal" onclick="cerrarModalAnalisis()">&times;</button>
-        <h2>Vincular Dispositivo Médico</h2>
+        <!-- FIX: este id faltaba y causaba el TypeError -->
+        <h2 id="modalTitulo">Vincular Dispositivo Médico</h2>
         <p id="modalMensaje">Por favor, ingrese manualmente el código identificador de su sensor biométrico para iniciar.</p>
 
         <div id="inputSection" style="display: flex; flex-direction: column; gap: 15px; width: 85%; margin: 0 auto;">
@@ -197,9 +190,10 @@
           </button>
         </div>
 
-        <div id="loaderSection" class="spinner-box" style="margin-top: 15px;">
+        <!-- loaderTexto ya no está oculto por defecto: el JS controla la visibilidad del loaderSection completo -->
+        <div id="loaderSection" class="spinner-box" style="margin-top: 15px; display: none;">
           <div class="spinner" id="iconoCarga" style="display: none;"></div>
-          <h4 id="loaderTexto" style="color: var(--primary); font-weight: 700; margin-bottom: 12px; display: none;">Conectando...</h4>
+          <h4 id="loaderTexto" style="color: var(--primary); font-weight: 700; margin-bottom: 12px;">Conectando...</h4>
 
           <button id="btnGuardarSQL" class="btn" style="background-color: var(--success); color: #fff; display: none; width: 85%; margin: 10px auto 0 auto;" onclick="ejecutarGuardadoDefinitivo()">
             Guardar Análisis
@@ -231,15 +225,9 @@
 
   </div>
 
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
-
-    <!-- CDN para bibliotecas externas -->
-  <script src="https://cloudflare.com"></script>
-  <script src="https://cloudflare.com"></script>
-  <script src="https://cloudflare.com"></script>
-
+  <!-- Se eliminaron Chart.js y los 3 <script src="https://cloudflare.com"> rotos: los gráficos son propios (canvas) -->
   <script src="../public/js/config.js"></script>
-  <script src="../public/js/paciente.js?v=1.2"></script>
+  <script src="../public/js/paciente.js?v=1.3"></script>
 </body>
 
 </html>

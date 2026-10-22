@@ -548,7 +548,7 @@ body {
   border: 1px solid #e2e8f0; 
   border-left: 5px solid #0284c7;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.02); 
-  max-height: 220px; 
+
   overflow-y: auto; 
   flex-shrink: 0;
 }

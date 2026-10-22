@@ -1,745 +1,550 @@
-var arrayhistorial = [];
-let chartHemo = null;
-let datosMedicionTemporal = null;
-let historialPacienteEnMemoria = [];
-let nombrePacienteEnMemoria = "Paciente";
-var datospaciente = {};
-let graficoInstancia = null;
-let idObservacionSeleccionada = 0;
+/* ============================================================================
+ * paciente.js  (versión corregida y optimizada)
+ * Requiere config.js con las constantes globales: API_URL y FIREBASE_URL
+ * ========================================================================== */
+"use strict";
 
-// Instancias independientes para los dos lienzos gráficos
+// ----------------------------------------------------------------------------
+// Constantes y estado
+// ----------------------------------------------------------------------------
+const RANGO_HB_DEFECTO = { min: 14.8, max: 18.8 };
+const POLLING_MS = 2000;
+const TIMEOUT_SENSOR_MS = 60000;
+
+const estado = {
+    historialCompleto: [],     // Paciente/mihistorial
+    historialDashboard: [],    // Dashboard/paciente
+    nombre: "Paciente",
+    filtro: "todos",
+    rango: { ...RANGO_HB_DEFECTO },
+    medicion: null,            // medición temporal del sensor (antes de guardar)
+    sensor: { intervalo: null, timeout: null }
+};
+
 let graficoHemoInstancia = null;
 let graficoTempInstancia = null;
 
+// ----------------------------------------------------------------------------
+// Utilidades
+// ----------------------------------------------------------------------------
+const $ = (id) => document.getElementById(id);
+const getToken = () => (localStorage.getItem("token_seguridad") || "").trim();
+const getUserId = () => localStorage.getItem("usuario_id");
 
-function MiniChartSingleLine(canvasId, minVal, maxVal, color, esTemp) {
-    var n = this;
-    n.canvas = document.getElementById(canvasId);
-    n.ctx = n.canvas ? n.canvas.getContext("2d") : null;
-
-    n.render = function (etiquetas, datos) {
-        if (!n.ctx || !n.canvas || datos.length === 0) return;
-        var o = n.canvas.getBoundingClientRect();
-        n.canvas.width = o.width;
-        n.canvas.height = 240;
-
-        var a = n.ctx, c = o.width, i = 240;
-        var r = 50, d = 30, s = c - 90, u = 150;
-
-        a.clearRect(0, 0, c, i);
-
-        // --- Rejilla horizontal y Escala Eje Y ---
-        a.strokeStyle = "#f1f5f9";
-        a.lineWidth = 1;
-        a.font = "11px sans-serif";
-
-        var rango = maxVal - minVal;
-        for (var l = 0; l <= 4; l++) {
-            var f = minVal + (rango / 4) * l;
-            var g = d + u - (l / 4) * u;
-            a.beginPath();
-            a.moveTo(r, g);
-            a.lineTo(c - 40, g);
-            a.stroke();
-
-            a.fillStyle = "#64748b";
-            a.fillText(f.toFixed(1), 10, g + 4);
-        }
-
-        var totalPuntos = datos.length;
-        var puntos = datos.map(function (val, idx) {
-            var posX = r + (totalPuntos > 1 ? (idx / (totalPuntos - 1)) * s : s / 2);
-            var posY = d + u - ((val - minVal) / rango) * u;
-            return { x: posX, y: posY, v: val };
-        });
-
-        // Dibujar Línea
-        a.beginPath();
-        a.strokeStyle = color;
-        a.lineWidth = 3;
-        a.lineJoin = "round";
-        puntos.forEach(function (p, idx) {
-            if (idx === 0) a.moveTo(p.x, p.y);
-            else a.lineTo(p.x, p.y);
-        });
-        a.stroke();
-
-        // Dibujar Nodos y Valores Numéricos
-        puntos.forEach(function (p) {
-            a.beginPath();
-            a.fillStyle = "#ffffff";
-            a.arc(p.x, p.y, 4, 0, 2 * Math.PI);
-            a.fill();
-            a.strokeStyle = color;
-            a.lineWidth = 2;
-            a.stroke();
-
-            a.fillStyle = "#1e293b";
-            a.font = "bold 10px sans-serif";
-            a.fillText(p.v.toFixed(1) + (esTemp ? "°" : ""), p.x - 10, p.y - 10);
-        });
-
-        // Eje X - Rótulos de Fechas
-        a.fillStyle = "#64748b";
-        a.font = "10px sans-serif";
-        etiquetas.forEach(function (fechaStr, idx) {
-            var p = puntos[idx];
-            if (p) {
-                a.save();
-                a.translate(p.x, i - 15);
-                a.rotate(-0.15);
-                a.fillText(fechaStr, -20, 10);
-                a.restore();
-            }
-        });
-    };
+function setTexto(id, texto) {
+    const el = $(id);
+    if (el) el.textContent = texto;
 }
 
+function mostrar(id, display) {
+    const el = $(id);
+    if (el) el.style.display = display;
+}
 
+function escapeHtml(valor) {
+    return String(valor ?? "").replace(/[&<>"']/g, (c) => ({
+        "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;"
+    }[c]));
+}
 
-// ============================================================================
-// 3. INICIALIZADOR DE GRÁFICOS (REESCRITO SIN REFERENCIAS ADVERSAS)
-// ============================================================================
+// fetch con token y JSON por defecto
+function apiFetch(ruta, opciones = {}) {
+    const { headers, ...resto } = opciones;
+    return fetch(`${API_URL}${ruta}`, {
+        ...resto,
+        headers: {
+            "Content-Type": "application/json",
+            "Authorization": `Bearer ${getToken()}`,
+            ...headers
+        }
+    });
+}
+
+// Lectores tolerantes a mayúsculas/minúsculas del backend
+const leerFecha = (r) => r.fecha || r.Fecha || r.fechaAnalisis || r.FechaAnalisis || null;
+const leerHemo = (r) => parseFloat(r.valorHemoglobina ?? r.ValorHemoglobina ?? 0) || 0;
+const leerTemp = (r) => parseFloat(r.temperatura ?? r.Temperatura ?? 0) || 0;
+
+// Parseo seguro de fechas "YYYY-MM-DD" (evita desfase de zona horaria)
+function parseFecha(valor) {
+    if (!valor) return null;
+    if (typeof valor === "string") {
+        const m = valor.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+        if (m) return new Date(Number(m[1]), Number(m[2]) - 1, Number(m[3]));
+    }
+    const d = new Date(valor);
+    return isNaN(d) ? null : d;
+}
+
+const soloDia = (d) => new Date(d.getFullYear(), d.getMonth(), d.getDate());
+
+function historialActivo() {
+    return estado.historialDashboard.length > 0
+        ? estado.historialDashboard
+        : estado.historialCompleto;
+}
+
+function registroMasReciente(lista) {
+    if (!lista.length) return {};
+    return lista.reduce((mejor, actual) => {
+        const fm = parseFecha(leerFecha(mejor));
+        const fa = parseFecha(leerFecha(actual));
+        if (!fm) return actual;
+        if (!fa) return mejor;
+        return fa >= fm ? actual : mejor;
+    });
+}
+
+function clasificarHemoglobina(valor) {
+    if (valor < estado.rango.min) return { clase: "anemia", texto: "ALERTA DE ANEMIA", pdf: "Alerta de Anemia" };
+    if (valor > estado.rango.max) return { clase: "poliglobulia", texto: "ALERTA DE POLIGLOBULIA", pdf: "Alerta de Poliglobulia" };
+    return { clase: "estable", texto: "FISIOLÓGICAMENTE ESTABLE", pdf: "Normal (Estable)" };
+}
+
+// ----------------------------------------------------------------------------
+// Gráfico de línea simple en canvas (sin librerías)
+// ----------------------------------------------------------------------------
+class MiniChartSingleLine {
+    constructor(canvasId, minVal, maxVal, color, esTemp) {
+        this.canvas = $(canvasId);
+        this.ctx = this.canvas ? this.canvas.getContext("2d") : null;
+        this.min = minVal;
+        this.max = maxVal;
+        this.color = color;
+        this.esTemp = esTemp;
+        this.ultimo = null; // últimos datos, para redibujar al cambiar el tamaño
+    }
+
+    redibujar() {
+        if (this.ultimo) this.render(this.ultimo[0], this.ultimo[1]);
+    }
+
+    render(etiquetas, datos) {
+        this.ultimo = [etiquetas, datos];
+        const { canvas, ctx } = this;
+        if (!canvas || !ctx) return;
+
+        const dpr = window.devicePixelRatio || 1;
+        const alto = 240;
+        canvas.style.width = "100%";
+        const ancho = canvas.getBoundingClientRect().width || 300;
+        canvas.width = Math.round(ancho * dpr);
+        canvas.height = alto * dpr;
+        canvas.style.height = alto + "px";
+        ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+        ctx.clearRect(0, 0, ancho, alto);
+        ctx.textAlign = "left";
+
+        const izq = 50, arriba = 30, anchoUtil = ancho - 90, altoUtil = 150;
+        const rango = this.max - this.min;
+
+        // Rejilla y escala del eje Y
+        ctx.strokeStyle = "#f1f5f9";
+        ctx.lineWidth = 1;
+        ctx.font = "11px sans-serif";
+        for (let l = 0; l <= 4; l++) {
+            const valor = this.min + (rango / 4) * l;
+            const y = arriba + altoUtil - (l / 4) * altoUtil;
+            ctx.beginPath();
+            ctx.moveTo(izq, y);
+            ctx.lineTo(ancho - 40, y);
+            ctx.stroke();
+            ctx.fillStyle = "#64748b";
+            ctx.fillText(valor.toFixed(1), 10, y + 4);
+        }
+
+        if (!datos.length) {
+            ctx.fillStyle = "#94a3b8";
+            ctx.font = "13px sans-serif";
+            ctx.textAlign = "center";
+            ctx.fillText("Sin registros en este período", izq + anchoUtil / 2, arriba + altoUtil / 2);
+            ctx.textAlign = "left";
+            return;
+        }
+
+        const n = datos.length;
+        const puntos = datos.map((val, idx) => {
+            const enRango = Math.min(Math.max(val, this.min), this.max);
+            return {
+                x: izq + (n > 1 ? (idx / (n - 1)) * anchoUtil : anchoUtil / 2),
+                y: arriba + altoUtil - ((enRango - this.min) / rango) * altoUtil,
+                v: val
+            };
+        });
+
+        // Línea
+        ctx.beginPath();
+        ctx.strokeStyle = this.color;
+        ctx.lineWidth = 3;
+        ctx.lineJoin = "round";
+        puntos.forEach((p, i) => (i === 0 ? ctx.moveTo(p.x, p.y) : ctx.lineTo(p.x, p.y)));
+        ctx.stroke();
+
+        // Nodos y valores
+        puntos.forEach((p) => {
+            ctx.beginPath();
+            ctx.fillStyle = "#ffffff";
+            ctx.arc(p.x, p.y, 4, 0, 2 * Math.PI);
+            ctx.fill();
+            ctx.strokeStyle = this.color;
+            ctx.lineWidth = 2;
+            ctx.stroke();
+
+            ctx.fillStyle = "#1e293b";
+            ctx.font = "bold 10px sans-serif";
+            ctx.fillText(p.v.toFixed(1) + (this.esTemp ? "°" : ""), p.x - 10, p.y - 10);
+        });
+
+        // Eje X (se omiten rótulos si hay demasiados para evitar solapamiento)
+        const maxEtiquetas = Math.max(1, Math.floor(anchoUtil / 45));
+        const paso = Math.ceil(n / maxEtiquetas);
+        ctx.fillStyle = "#64748b";
+        ctx.font = "10px sans-serif";
+        etiquetas.forEach((texto, idx) => {
+            if (idx % paso !== 0) return;
+            const p = puntos[idx];
+            ctx.save();
+            ctx.translate(p.x, alto - 15);
+            ctx.rotate(-0.15);
+            ctx.fillText(texto, -20, 10);
+            ctx.restore();
+        });
+    }
+}
+
 function inicializarGrafico(etiquetas, valoresHemo, valoresTemp) {
-    // 1. Instanciar y renderizar el gráfico independiente de Hemoglobina
     if (!graficoHemoInstancia) {
-        graficoHemoInstancia = new MiniChartSingleLine('graficoHemoglobina', 8, 18, "#818cf8", false);
+        graficoHemoInstancia = new MiniChartSingleLine("graficoHemoglobina", 8, 18, "#818cf8", false);
+    }
+    if (!graficoTempInstancia) {
+        graficoTempInstancia = new MiniChartSingleLine("graficoTemperatura", 35, 41, "#f97316", true);
     }
     graficoHemoInstancia.render(etiquetas, valoresHemo);
-
-    // 2. Instanciar y renderizar el gráfico independiente de Temperatura
-    if (!graficoTempInstancia) {
-        graficoTempInstancia = new MiniChartSingleLine('graficoTemperatura', 35, 41, "#f97316", true);
-    }
     graficoTempInstancia.render(etiquetas, valoresTemp);
 }
 
+// ----------------------------------------------------------------------------
+// Filtro cronológico
+// ----------------------------------------------------------------------------
 function procesarFiltroCronologico(tipoFiltro) {
-    // SINCRO: Usamos 'historialPacienteEnMemoria' o en su defecto 'arrayhistorial'
-    const datosOrigen = (typeof historialPacienteEnMemoria !== "undefined" && historialPacienteEnMemoria.length > 0)
-        ? historialPacienteEnMemoria
-        : (arrayhistorial || []);
+    estado.filtro = tipoFiltro;
 
-    if (datosOrigen.length === 0) {
-        if (typeof inicializarGrafico === "function") inicializarGrafico([], [], []);
+    // Resaltar el botón activo
+    document.querySelectorAll(".filtros-botones .btn-filtro").forEach((btn) => {
+        btn.classList.toggle("active", btn.dataset.filtro === tipoFiltro);
+    });
+
+    const origen = historialActivo();
+    if (!origen.length) {
+        inicializarGrafico([], [], []);
         return;
     }
 
-    // =========================================================================
-    // 🎨 EFECTO VISUAL: Pintar dinámicamente el botón seleccionado
-    // =========================================================================
-    const contenedorFiltros = document.querySelector(".filtros-contenedor");
-    if (contenedorFiltros) {
-        const botones = contenedorFiltros.querySelectorAll("button");
-        botones.forEach(btn => {
-            if (btn.getAttribute("onclick") && btn.getAttribute("onclick").includes(`'${tipoFiltro}'`)) {
-                btn.style.backgroundColor = "var(--primary, #2563eb)";
-                btn.style.color = "#ffffff";
-                btn.style.fontWeight = "bold";
-            } else {
-                btn.style.backgroundColor = "#e2e8f0";
-                btn.style.color = "#334155";
-                btn.style.fontWeight = "normal";
-            }
+    const hoy = soloDia(new Date());
+    const diasDesdeHoy = (fecha) => Math.round((hoy - fecha) / 86400000);
+
+    const reglas = {
+        dias: (f) => diasDesdeHoy(f) === 0,
+        semanas: (f) => { const d = diasDesdeHoy(f); return d >= 0 && d <= 7; },
+        meses: (f) => f.getFullYear() === hoy.getFullYear() && f.getMonth() === hoy.getMonth(),
+        anos: (f) => f.getFullYear() === hoy.getFullYear(),
+        todos: () => true
+    };
+    const cumple = reglas[tipoFiltro] || reglas.todos;
+
+    const registros = origen
+        .map((r, idx) => {
+            const f = parseFecha(leerFecha(r));
+            return { r, idx, fecha: f && soloDia(f) };
+        })
+        .filter((x) => !x.fecha || cumple(x.fecha))
+        .sort((a, b) => {
+            if (!a.fecha || !b.fecha) return a.idx - b.idx;
+            return a.fecha - b.fecha;
         });
-    }
 
-    // =========================================================================
-    // 📅 FECHA REAL DEL SISTEMA (Octubre 2026)
-    // =========================================================================
-    const ahora = new Date();
-    const hoyReal = new Date(ahora.getFullYear(), ahora.getMonth(), ahora.getDate());
+    const etiquetas = registros.map((x) =>
+        x.fecha
+            ? `${x.fecha.getDate()}/${x.fecha.getMonth() + 1}`
+            : "Reg. " + (x.r.idNivel || x.r.IdNivel || x.idx + 1)
+    );
 
-    console.log("=== INICIO FILTRADO CRONOLÓGICO ===");
-    console.log("Fecha de referencia 'Hoy Real':", hoyReal.toLocaleDateString());
-
-    // 1. Filtrado de muestras utilizando el reloj real de la computadora
-    const registrosFiltrados = datosOrigen.filter(registro => {
-        const fStr = registro.fecha || registro.Fecha || registro.fechaAnalisis || registro.FechaAnalisis;
-        if (!fStr) return true;
-
-        let fechaReg;
-        // 🧠 BLINDAJE DECIMAL: Corregimos el parseo del formato YYYY-MM-DD para evitar el error octal de ceros a la izquierda
-        if (typeof fStr === "string" && fStr.includes("-") && !fStr.includes("T")) {
-            const partes = fStr.split("-"); // [0]=Año, [1]=Mes, [2]=Día
-            // Usamos Number() para asegurar base 10 pura y restamos 1 al mes porque en JS los meses van de 0 a 11
-            fechaReg = new Date(Number(partes[0]), Number(partes[1]) - 1, Number(partes[2]));
-        } else {
-            fechaReg = new Date(fStr);
-        }
-
-        const registroNormalizado = new Date(fechaReg.getFullYear(), fechaReg.getMonth(), fechaReg.getDate());
-
-        // Calculamos la diferencia exacta en días transcurridos reales
-        const diferenciaTiempo = hoyReal - registroNormalizado;
-        const diferenciaDias = Math.floor(diferenciaTiempo / (1000 * 60 * 60 * 24));
-
-        console.log(`Registro detectado: Hemoglobina=${registro.valorHemoglobina || registro.ValorHemoglobina} | Fecha=${registroNormalizado.toLocaleDateString()} | Días de diferencia con hoy=${diferenciaDias}`);
-
-        switch (tipoFiltro) {
-            case 'dias':
-                // Solo muestras tomadas estrictamente hoy (10/10/2026)
-                return diferenciaDias === 0;
-
-            case 'semanas':
-                // Muestras dentro de los últimos 7 días reales (Abarca tus dos exámenes del 6/10)
-                return diferenciaDias >= 0 && diferenciaDias <= 7;
-
-            case 'meses':
-                // 🧠 OPTIMIZADO PARA PRUEBAS: Filtra estrictamente por mes calendario actual (Octubre)
-                // Esto aislará la muestra del 30/9 del gráfico al presionar "Mes"
-                return registroNormalizado.getFullYear() === hoyReal.getFullYear() &&
-                    registroNormalizado.getMonth() === hoyReal.getMonth();
-
-            case 'anos':
-                // Muestras tomadas en el año en curso (2026)
-                return registroNormalizado.getFullYear() === hoyReal.getFullYear();
-
-            default:
-                return true; // "Ver Todo" (Muestra las 3: septiembre y octubre)
-        }
-    });
-
-    // 2. Ordenar cronológicamente (Del más antiguo al más reciente para que la curva avance bien de izquierda a derecha)
-    const registrosOrdenados = registrosFiltrados.sort((a, b) => {
-        const fStrA = a.fecha || a.Fecha || a.fechaAnalisis || a.FechaAnalisis;
-        const fStrB = b.fecha || b.Fecha || b.fechaAnalisis || b.FechaAnalisis;
-
-        let dateA, dateB;
-        if (typeof fStrA === "string" && fStrA.includes("-")) {
-            const p = fStrA.split("-"); dateA = new Date(Number(p[0]), Number(p[1]) - 1, Number(p[2]));
-        } else { dateA = new Date(fStrA); }
-
-        if (typeof fStrB === "string" && fStrB.includes("-")) {
-            const p = fStrB.split("-"); dateB = new Date(Number(p[0]), Number(p[1]) - 1, Number(p[2]));
-        } else { dateB = new Date(fStrB); }
-
-        return dateA - dateB;
-    });
-
-    // 3. Mapear cadenas legibles "DD/MM" para el eje X del gráfico
-    const etiquetasFechas = registrosOrdenados.map((r, index) => {
-        const fStr = r.fecha || r.Fecha || r.fechaAnalisis || r.FechaAnalisis;
-        if (!fStr) return "Reg. " + (r.idNivel || r.IdNivel || index + 1);
-
-        let f;
-        if (typeof fStr === "string" && fStr.includes("-") && !fStr.includes("T")) {
-            const partes = fStr.split("-");
-            f = new Date(Number(partes[0]), Number(partes[1]) - 1, Number(partes[2]));
-        } else {
-            f = new Date(fStr);
-        }
-        return `${f.getDate()}/${f.getMonth() + 1}`;
-    });
-
-    const valoresHemo = registrosOrdenados.map(r => parseFloat(r.valorHemoglobina || r.ValorHemoglobina || 0));
-    const valoresTemp = registrosOrdenados.map(r => parseFloat(r.temperatura || r.Temperatura || 0));
-
-    console.log("Registros que pasaron el filtro e irán al gráfico:", valoresHemo);
-
-    // 4. Actualizar de forma limpia ambos gráficos independientes
-    if (typeof inicializarGrafico === "function") {
-        if (valoresHemo.length === 0) {
-
-            inicializarGrafico(["Sin Registros"], [0], [0]);
-
-        } else {
-
-            inicializarGrafico(etiquetasFechas, valoresHemo, valoresTemp);
-        }
-    }
+    inicializarGrafico(
+        etiquetas,
+        registros.map((x) => leerHemo(x.r)),
+        registros.map((x) => leerTemp(x.r))
+    );
 }
 
-// Vinculación definitiva y forzada a la ventana global de ejecución
-window.aplicarFiltroTiempo = function (tipoFiltro) {
+// Compatibilidad con llamadas externas
+function aplicarFiltroTiempo(tipoFiltro) {
     procesarFiltroCronologico(tipoFiltro);
-};
+}
+window.aplicarFiltroTiempo = aplicarFiltroTiempo;
 
-
-
-
+// ----------------------------------------------------------------------------
+// Observaciones clínicas (select del modal)
+// ----------------------------------------------------------------------------
 async function cargarObservacionesEnSelect() {
-    const cbo = document.getElementById("cboObservaciones");
-    if (!cbo) return; // Validación por si no encuentra el elemento en el DOM
+    const cbo = $("cboObservaciones");
+    if (!cbo) return;
 
     try {
-        const respuesta = await fetch(`${API_URL}observaciones/observacionesclinicas`, {
-            method: 'GET',
-            headers: {
-                'Authorization': `Bearer ${localStorage.getItem('token')}`,
-                'Content-Type': 'application/json'
-            }
-        });
-
+        const respuesta = await apiFetch("observaciones/observacionesclinicas");
         if (!respuesta.ok) throw new Error("Error al obtener observaciones.");
 
         const datos = await respuesta.json();
+        const fragmento = document.createDocumentFragment();
 
-        // Limpiamos el select y dejamos la opción base por defecto (ID = 0)
-        cbo.innerHTML = '<option value="0">--- Ninguna (Estado de Salud Normal) ---</option>';
+        const base = document.createElement("option");
+        base.value = "0";
+        base.textContent = "--- Ninguna (Estado de Salud Normal) ---";
+        fragmento.appendChild(base);
 
-        // Iteramos los datos mapeando la estructura interna real
-        datos.forEach(item => {
-            // Accedemos de forma segura tanto si la propiedad viene en minúsculas como en mayúsculas
+        datos.forEach((item) => {
             const obs = item.observaciones || item.observacion;
-
-            if (obs) {
-                const option = document.createElement("option");
-                option.value = obs.idObservacion; // Extrae el ID (Ej: 1)
-                option.textContent = obs.observacion; // Extrae el nombre (Ej: 'Embarazo')
-                cbo.appendChild(option);
-            }
+            if (!obs) return;
+            const opt = document.createElement("option");
+            opt.value = obs.idObservacion;
+            opt.textContent = obs.observacion;
+            fragmento.appendChild(opt);
         });
 
+        cbo.replaceChildren(fragmento);
     } catch (error) {
         console.error("Error poblando el selector:", error);
         cbo.innerHTML = '<option value="0">Error al cargar observaciones de la BD</option>';
     }
 }
 
-
-
-
+// ----------------------------------------------------------------------------
+// Sesión
+// ----------------------------------------------------------------------------
 function cerrarSesion() {
     localStorage.removeItem("token_seguridad");
+    localStorage.removeItem("usuario_id");
     window.location.href = "../index.html";
 }
 
-document.addEventListener("DOMContentLoaded", async function () {
-    const token = localStorage.getItem("token_seguridad");
-    const btnLogout = document.getElementById("btnCerrarSesion");
-    if (btnLogout) { btnLogout.addEventListener("click", cerrarSesion); }
-
-    // Validación estricta de seguridad en la sesión
-    if (!token) {
-        alert("Acceso no autorizado. Por favor, inicie sesión nuevamente.");
-        window.location.href = "../index.html";
-        return;
-    }
-
-    try {
-        // Carga primaria de expediente personal
-        await cargarPaciente();
-
-        // Peticiones paralelas al servidor central
-        const respuesta = await fetch(`${API_URL}Dashboard/paciente`, {
-            method: "GET",
-            headers: {
-                "Authorization": "Bearer " + token.trim(),
-                "Content-Type": "application/json"
-            }
-        });
-
-        const id = localStorage.getItem("usuario_id");
-        const respuestahistorial = await fetch(`${API_URL}Paciente/mihistorial/${id}`, {
-            method: "GET",
-            headers: {
-                "Authorization": "Bearer " + token.trim(),
-                "Content-Type": "application/json"
-            }
-        });
-
-        // Almacenamos el historial completo unificado devuelto por tu endpoint
-        if (respuestahistorial.ok) {
-            const historialhemo = await respuestahistorial.json();
-            arrayhistorial = historialhemo.historial || [];
-        }
-
-        if (respuesta.ok) {
-            const datos = await respuesta.json();
-            nombrePacienteEnMemoria = datos.nombreCompleto || "Paciente";
-            historialPacienteEnMemoria = datos.historial || [];
-
-            // Validación por si el expediente clínico está vacío
-            if (arrayhistorial.length === 0) {
-                const estadoDiv = document.getElementById("estadoPaciente");
-                if (estadoDiv) {
-                    estadoDiv.textContent = "Estado: Sin análisis registrados";
-                    estadoDiv.className = "estado estable";
-                }
-                inicializarGrafico([], [], []);
-                return;
-            }
-
-            // 📈 Disparador inicial: Renderiza ambos gráficos con la vista 'todos'
-            aplicarFiltroTiempo('todos');
-            console.log("asdkjasdkjanskdns");
-            console.log(arrayhistorial);
-            // Extracción de las últimas métricas para la tarjeta informativa superior
-            const ultimoRegistro = arrayhistorial[0] || {};
-            const ultimaHemoglobina = parseFloat(ultimoRegistro.valorHemoglobina || 0);
-            const ultimaTemp = ultimoRegistro.temperatura || "S/D";
-            actualizarEstadoClinico(ultimaHemoglobina);
-            // =========================================================================
-            // 🧠 INTEGRACIÓN MÓDULO ANALÍTICO EVOLUTIVO DE WALLE-HB
-            // =========================================================================
-            const iaNode = datos.analisisIA || datos.analisisia;
-
-            if (iaNode) {
-                const estadoDiv = document.getElementById("estadoPaciente");
-                if (estadoDiv) {
-                    const stringEstado = Array.isArray(iaNode.estado) ? iaNode.estado[0] : iaNode.estado;
-                    estadoDiv.innerHTML = `ESTADO: ${stringEstado.toUpperCase()} (${ultimaHemoglobina} G/DL)<br>Temperatura: ${ultimaTemp}ºC`;
-
-                    // Asignación de estilos dinámicos CSS según el dictamen médico
-                    if (stringEstado === "Anemia") {
-                        estadoDiv.className = "estado anemia";
-                    } else if (stringEstado === "Poliglobulia") {
-                        estadoDiv.className = "estado poliglobulia";
-                    } else {
-                        estadoDiv.className = "estado estable";
-                    }
-                }
-
-                // Renderizado adaptativo de la cadena de alertas del modelo .pkl
-                const alertaTextoDiv = document.getElementById("textoAlertaWalleHB");
-                const divContenedorIa = document.getElementById("alertasWalleHB");
-
-                if (alertaTextoDiv && iaNode.alertas) {
-                    let mensajePuro = "";
-                    if (Array.isArray(iaNode.alertas) && iaNode.alertas.length > 0) {
-                        mensajePuro = iaNode.alertas[0];
-                    } else if (typeof iaNode.alertas === "string") {
-                        mensajePuro = iaNode.alertas;
-                    }
-
-                    if (mensajePuro.length > 0) {
-                        const mensajeFormateado = mensajePuro.replace(/\n/g, "<br>");
-                        alertaTextoDiv.innerHTML = `<strong>Obtenido del historial de mediciones:</strong><br><br>${mensajeFormateado}`;
-                        if (divContenedorIa) divContenedorIa.style.display = "block";
-                    }
-                }
-
-                // Listado secuencial de recomendaciones clínicas sugeridas
-                const listaUl = document.getElementById("listaRecomendacionesWalleHB");
-                if (listaUl && iaNode.recomendaciones) {
-                    listaUl.innerHTML = "";
-                    iaNode.recomendaciones.forEach(rec => {
-                        const li = document.createElement("li");
-                        li.textContent = rec;
-                        li.className = "item-recommendacion-ia";
-                        listaUl.appendChild(li);
-                    });
-                }
-            } else {
-                // Fallback preventivo si el nodo inteligente falla temporalmente
-                if (typeof actualizarEstadoClinico === "function") {
-                    actualizarEstadoClinico(ultimaHemoglobina);
-                }
-            }
-
-        } else {
-            alert("Su sesión ha expirado o es inválida.");
-            cerrarSesion();
-        }
-    } catch (error) {
-        console.error("Error crítico detectado en la inicialización:", error);
-    }
-});
-
-
-
-// async function cargarPaciente() {
-//     try {
-//         const token = localStorage.getItem("token_seguridad");
-//         const id = localStorage.getItem("usuario_id");
-//         if (!token || !id) {
-//             console.error("No se encontró el token o el ID del usuario en el almacenamiento local.");
-//             return;
-//         }
-
-//         const respuesta = await fetch(`${API_URL}Paciente/MisDatos/${id}`, {
-//             method: "GET",
-//             headers: {
-//                 "Authorization": "Bearer " + token.trim(),
-//                 "Content-Type": "application/json"
-//             }
-//         });
-
-//         if (respuesta.ok) {
-//             datospaciente = await respuesta.json();
-//             console.log("Datos recibidos del servidor:", datospaciente);
-
-//             const paci = datospaciente.Persona || datospaciente.persona;
-//             const correo = datospaciente.Correo || datospaciente.correo;
-//             const tipoSangreObjeto = datospaciente.TipoSangre || datospaciente.tipoSangre;
-
-//             const hoy = new Date();
-//             const fechin = new Date(datospaciente.fechaNacimiento.fechaDeNacimiento);
-//             let edad = hoy.getFullYear() - fechin.getFullYear();
-//             const diferenciaMeses = hoy.getMonth() - fechin.getMonth();
-//             if (diferenciaMeses < 0 || (diferenciaMeses === 0 && hoy.getDate() < fechin.getDate())) {
-//                 edad--;
-//             }
-
-//             const tipoSangreTexto = tipoSangreObjeto ? (tipoSangreObjeto.tipoDeSangre || tipoSangreObjeto.TipoDeSangre || "No registrado") : "No registrado";
-//             const nombrepacientecompleto = paci ? `${paci.Nombre || paci.nombre || ''} ${paci.Paterno || paci.paterno || ''} ${paci.Materno || paci.materno || ''}`.trim() : 'Paciente sin nombre';
-//             const correoTexto = correo ? (correo.CorreoElectronico || correo.correoElectronico || 'Sin correo') : 'Sin correo';
-//             const departamento = datospaciente.departamento.departamento1;
-//             const ciudad = datospaciente.ciudad.nombre;
-
-//             const infoDiv = document.getElementById("infoPaciente");
-//             if (infoDiv) {
-//                 infoDiv.innerHTML = `
-//                     <p><strong>Nombre:</strong> ${nombrepacientecompleto}</p>
-//                     <p><strong>Correo:</strong> ${correoTexto}</p>
-//                     <p><strong>Edad:</strong> ${edad}</p>
-//                     <p><strong>Departamento:</strong> ${departamento}</p>
-//                     <p><strong>Ciudad:</strong> ${ciudad}</p>
-//                     <p><strong>Tipo de Sangre:</strong> ${tipoSangreTexto}</p>
-//                     <div id="estadoPaciente" class="estado">Evaluando historial con Walle-HB...</div>
-//                 `;
-//             }
-//         }
-//     }
-//     catch (error) {
-//         console.error("Error en la petición fetch de datos personales:", error);
-//     }
-// }
+// ----------------------------------------------------------------------------
+// Datos personales
+// ----------------------------------------------------------------------------
+function calcularEdad(fechaNacimiento) {
+    const nac = parseFecha(fechaNacimiento);
+    if (!nac) return "-";
+    const hoy = new Date();
+    let edad = hoy.getFullYear() - nac.getFullYear();
+    const dm = hoy.getMonth() - nac.getMonth();
+    if (dm < 0 || (dm === 0 && hoy.getDate() < nac.getDate())) edad--;
+    return edad;
+}
 
 async function cargarPaciente() {
     try {
-        const token = localStorage.getItem("token_seguridad");
-        const id = localStorage.getItem("usuario_id");
-        if (!token || !id) {
+        const id = getUserId();
+        if (!getToken() || !id) {
             console.error("No se encontró el token o el ID del usuario en el almacenamiento local.");
             return;
         }
 
-        const respuesta = await fetch(`${API_URL}Paciente/MisDatos/${id}`, {
-            method: "GET",
-            headers: {
-                "Authorization": "Bearer " + token.trim(),
-                "Content-Type": "application/json"
-            }
-        });
+        const respuesta = await apiFetch(`Paciente/MisDatos/${id}`);
+        if (!respuesta.ok) return;
 
-        if (respuesta.ok) {
-            datospaciente = await respuesta.json();
-            console.log("Datos recibidos del servidor:", datospaciente);
+        const d = await respuesta.json();
+        const persona = d.Persona || d.persona;
+        const correo = d.Correo || d.correo;
+        const tipoSangre = d.TipoSangre || d.tipoSangre;
 
-            const paci = datospaciente.Persona || datospaciente.persona;
-            const correo = datospaciente.Correo || datospaciente.correo;
-            const tipoSangreObjeto = datospaciente.TipoSangre || datospaciente.tipoSangre;
+        const nombre = persona
+            ? `${persona.Nombre || persona.nombre || ""} ${persona.Paterno || persona.paterno || ""} ${persona.Materno || persona.materno || ""}`.trim()
+            : "Paciente sin nombre";
 
-            const hoy = new Date();
-            const fechin = new Date(datospaciente.fechaNacimiento.fechaDeNacimiento);
-            let edad = hoy.getFullYear() - fechin.getFullYear();
-            const diferenciaMeses = hoy.getMonth() - fechin.getMonth();
-            if (diferenciaMeses < 0 || (diferenciaMeses === 0 && hoy.getDate() < fechin.getDate())) {
-                edad--;
-            }
-
-            const tipoSangreTexto = tipoSangreObjeto ? (tipoSangreObjeto.tipoDeSangre || tipoSangreObjeto.TipoDeSangre || "No registrado") : "No registrado";
-            const nombrepacientecompleto = paci ? `${paci.Nombre || paci.nombre || ''} ${paci.Paterno || paci.paterno || ''} ${paci.Materno || paci.materno || ''}`.trim() : 'Paciente sin nombre';
-            const correoTexto = correo ? (correo.CorreoElectronico || correo.correoElectronico || 'Sin correo') : 'Sin correo';
-            const departamento = datospaciente.departamento.departamento1;
-            const ciudad = datospaciente.ciudad.nombre;
-
-            // Rellenamos los campos de texto individuales manteniendo intacta la estructura HTML fija
-            const elNombre = document.getElementById("nombrePacienteDisplay");
-            const elCorreo = document.getElementById("correoPacienteDisplay");
-            const elEdad = document.getElementById("edadDisplay");
-            const elDepto = document.getElementById("deptoDisplay");
-            const elCiudad = document.getElementById("ciudadDisplay");
-            const elSangre = document.getElementById("sangreDisplay");
-
-            if (elNombre) elNombre.textContent = nombrepacientecompleto;
-            if (elCorreo) elCorreo.textContent = correoTexto;
-            if (elEdad) elEdad.textContent = edad;
-            if (elDepto) elDepto.textContent = departamento;
-            if (elCiudad) elCiudad.textContent = ciudad;
-            if (elSangre) elSangre.textContent = tipoSangreTexto;
-        }
-    }
-    catch (error) {
+        setTexto("nombrePacienteDisplay", nombre || "Paciente sin nombre");
+        setTexto("correoPacienteDisplay", correo ? (correo.CorreoElectronico || correo.correoElectronico || "Sin correo") : "Sin correo");
+        setTexto("edadDisplay", calcularEdad(d.fechaNacimiento?.fechaDeNacimiento));
+        setTexto("deptoDisplay", d.departamento?.departamento1 ?? "-");
+        setTexto("ciudadDisplay", d.ciudad?.nombre ?? "-");
+        setTexto("sangreDisplay", tipoSangre ? (tipoSangre.tipoDeSangre || tipoSangre.TipoDeSangre || "No registrado") : "No registrado");
+    } catch (error) {
         console.error("Error en la petición fetch de datos personales:", error);
     }
 }
 
-// async function actualizarEstadoClinico() {
-//     const estadoDiv = document.getElementById("estadoPaciente");
-//     if (!estadoDiv) return;
+// ----------------------------------------------------------------------------
+// Tarjeta de estado clínico
+// ----------------------------------------------------------------------------
+const ICONO_PULSO = '<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg>';
+const ICONO_INFO = '<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="8" x2="12" y2="12"></line><line x1="12" y1="16" x2="12.01" y2="16"></line></svg>';
 
-//     const token = localStorage.getItem("token_seguridad");
-//     const id = localStorage.getItem("usuario_id");
+function pintarEstado(clase, titulo, detalle) {
+    const div = $("estadoPaciente");
+    if (!div) return;
+    div.className = `estado ${clase}`;
+    div.innerHTML = `
+        <div class="estado-icon-wrapper">${clase === "sin-datos" ? ICONO_INFO : ICONO_PULSO}</div>
+        <div class="estado-text-content">
+            <span class="estado-title-label">ESTADO</span>
+            <strong>${escapeHtml(titulo)}</strong>
+            ${detalle ? `<span class="estado-detalle-medicion">${escapeHtml(detalle)}</span>` : ""}
+        </div>`;
+}
 
-//     try {
-//         const respuesta = await fetch(`${API_URL}RangoHemoglobina/mirango/${id}`, {
-//             method: 'GET',
-//             headers: {
-//                 'Authorization': `Bearer ${token.trim()}`,
-//                 'Content-Type': 'application/json'
-//             }
-//         });
+const detalleMedicion = (hemo, temp) => `(${hemo} G/DL) TEMPERATURA: ${temp} °C`;
 
-//         if (!respuesta.ok) throw new Error("Error al obtener el historial clínico del paciente.");
+function pintarSinAnalisis() {
+    pintarEstado("sin-datos", "SIN ANÁLISIS REGISTRADOS", "");
+}
 
-//         const datos = await respuesta.json();
-
-//         if (!datos || datos.length === 0) {
-//             estadoDiv.textContent = "Estado: Sin análisis registrados";
-//             estadoDiv.className = "estado sin-datos";
-//             return;
-//         }
-
-
-//         const ultimoDato = datos[datos.length - 1];
-
-
-//         const referencia = ultimoDato.rangoReferencia;
-
-//         if (!referencia) {
-//             console.error("El registro no cuenta con un objeto de rangoReferencia válido.");
-//             return;
-//         }
-
-//         const min = referencia.valorMinimo;
-//         const max = referencia.valorMaximo;
-//         const hemoglobinaActual = ultimoDato.valorHemoglobina;
-
-//         const temperaturaActual = ultimoDato.temperatura;
-
-//         console.log(`Evaluando Límites: ${min} - ${max}. Medición: ${hemoglobinaActual} g/dL, TEMPERATURA: ${temperaturaActual}°C`);
-
-//         if (hemoglobinaActual < 14.8) {
-//             estadoDiv.textContent = `Estado: Alerta de Anemia (${hemoglobinaActual} g/dL)  TEMPERATURA: ${temperaturaActual} °C`;
-//             estadoDiv.className = "estado anemia";
-//         } else if (hemoglobinaActual > 18.8) {
-//             estadoDiv.textContent = `Estado: Alerta de Poliglobulia / Policitemia (${hemoglobinaActual} g/dL)  TEMPERATURA: ${temperaturaActual} °C`;
-//             estadoDiv.className = "estado poliglobulia";
-//         } else {
-//             estadoDiv.textContent = `Estado: Fisiológicamente Estable (${hemoglobinaActual} g/dL)  TEMPERATURA: ${temperaturaActual} °C`;
-//             estadoDiv.className = "estado estable";
-//         }
-//     } catch (error) {
-//         console.error("Error en el flujo de rangos:", error);
-//         estadoDiv.textContent = "Estado: Error al sincronizar";
-//     }
-// }
-
-async function actualizarEstadoClinico(hemoglobinaParam) {
-    const estadoDiv = document.getElementById("estadoPaciente");
-    if (!estadoDiv) return;
-
-    const token = localStorage.getItem("token_seguridad");
-    const id = localStorage.getItem("usuario_id");
+async function actualizarEstadoClinico() {
+    if (!$("estadoPaciente")) return;
 
     try {
-        const respuesta = await fetch(`${API_URL}RangoHemoglobina/mirango/${id}`, {
-            method: 'GET',
-            headers: {
-                'Authorization': `Bearer ${token.trim()}`,
-                'Content-Type': 'application/json'
-            }
-        });
-
+        const respuesta = await apiFetch(`RangoHemoglobina/mirango/${getUserId()}`);
         if (!respuesta.ok) throw new Error("Error al obtener el historial clínico del paciente.");
 
         const datos = await respuesta.json();
-
         if (!datos || datos.length === 0) {
-            estadoDiv.className = "estado sin-datos";
-            estadoDiv.innerHTML = `
-                <div class="estado-icon-wrapper">
-                    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="8" x2="12" y2="12"></line><line x1="12" y1="16" x2="12.01" y2="16"></line></svg>
-                </div>
-                <div class="estado-text-content">
-                    <span class="estado-title-label">ESTADO</span>
-                    <strong>SIN ANÁLISIS REGISTRADOS</strong>
-                </div>
-            `;
+            pintarSinAnalisis();
             return;
         }
-
-        const ultimoDato = datos[datos.length - 1];
-        const hemoglobinaActual = ultimoDato.valorHemoglobina;
-        const temperaturaActual = ultimoDato.temperatura;
-
-        let claseEstado = "estable";
-        let textoEstado = "FISIOLÓGICAMENTE ESTABLE";
-
-        if (hemoglobinaActual < 14.8) {
-            claseEstado = "anemia";
-            textoEstado = "ALERTA DE ANEMIA";
-        } else if (hemoglobinaActual > 18.8) {
-            claseEstado = "poliglobulia";
-            textoEstado = "ALERTA DE POLIGLOBULIA";
+        console.log(datos);
+        const ultimo = datos[datos.length - 1];
+        console.log(ultimo);
+        const ref = ultimo.rangoReferencia;
+        if (ref && ref.valorMinimo != null && ref.valorMaximo != null) {
+            estado.rango = { min: ref.valorMinimo, max: ref.valorMaximo };
         }
 
-        // Asignamos el diseño exacto con iconos y marcos de colores dinámicos sin romper la estructura
-        estadoDiv.className = `estado ${claseEstado}`;
-        estadoDiv.innerHTML = `
-            <div class="estado-icon-wrapper">
-                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg>
-            </div>
-            <div class="estado-text-content">
-                <span class="estado-title-label">ESTADO</span>
-                <strong>${textoEstado}</strong>
-                <span class="estado-detalle-medicion">(${hemoglobinaActual} G/DL) TEMPERATURA: ${temperaturaActual} °C</span>
-            </div>
-        `;
+        const hemo = ultimo.valorHemoglobina;
+        const { clase, texto } = clasificarHemoglobina(hemo);
+        pintarEstado(clase, texto, detalleMedicion(hemo, ultimo.temperatura));
     } catch (error) {
         console.error("Error en el flujo de rangos:", error);
     }
 }
 
+// ----------------------------------------------------------------------------
+// Módulo analítico Walle-HB
+// ----------------------------------------------------------------------------
+function renderAnalisisIA(iaNode, ultimo) {
+    const hemo = leerHemo(ultimo);
+    console.log(hemo);
+    const temp = ultimo.temperatura ?? ultimo.Temperatura ?? "S/D";
 
-// ============================================================================
-// LIBRERÍA GRÁFICA INTEGRADA (0% Internet - Inmune a bloqueos)
-// ============================================================================
-!function (t, e) { "object" == typeof exports && "undefined" != typeof module ? module.exports = e() : "function" == typeof define && define.amd ? define(e) : (t = "undefined" != typeof globalThis ? globalThis : t || self).Chart = e() }(this, (function () {
-    "use strict"; return function (t, e) {// Minichart Core para inyección directa en DOM local sin consumo de CPU
-        var n = this; n.id = t, n.canvas = document.getElementById(t), n.ctx = n.canvas ? n.canvas.getContext("2d") : null, n.render = function (t, e) { if (!n.ctx) return; var o = n.canvas.getBoundingClientRect(); n.canvas.width = o.width, n.canvas.height = 320; var a = n.ctx, c = o.width, i = 320, r = 50, d = 30, s = c - 70, u = 250; a.clearRect(0, 0, c, i), a.strokeStyle = "#f1f5f9", a.lineWidth = 1, a.font = "11px sans-serif", a.fillStyle = "#64748b"; for (var l = 0; l <= 4; l++) { var f = 8 + 2.5 * l, g = d + u - (f - 8) / 10 * u; a.beginPath(), a.moveTo(r, g), a.lineTo(c - 20, g), a.stroke(), a.fillText(f.toFixed(1), 10, g + 4) } var v = e.map((function (t, e) { return { x: r + (e / (o.length - 1 || 1)) * s, y: d + u - (t - 8) / 10 * u, v: t } })); a.beginPath(), a.strokeStyle = "#818cf8", a.lineWidth = 3, a.lineJoin = "round", v.forEach((function (t, e) { 0 === e ? a.moveTo(t.x, t.y) : a.lineTo(t.x, t.y) })), a.stroke(), v.forEach((function (t, e) { a.beginPath(), a.fillStyle = "#ffffff", a.arc(t.x, t.y, 5, 0, 2 * Math.PI), a.fill(), a.strokeStyle = "#818cf8", a.lineWidth = 2, a.stroke(), a.fillStyle = "#1e293b", a.font = "bold 11px sans-serif", a.fillText(t.v.toFixed(1), t.x - 8, t.y - 10), a.fillStyle = "#64748b", a.font = "10px sans-serif", a.fillText(t[e], t.x - 22, i - 10) })) }
+    const estadoIA = Array.isArray(iaNode.estado) ? iaNode.estado[0] : iaNode.estado;
+    console.log(estadoIA);
+    if (estadoIA) {
+        const clave = String(estadoIA).toLowerCase();
+        const clase = clave === "anemia" ? "anemia" : clave === "poliglobulia" ? "poliglobulia" : "estable";
     }
-}));
 
+    // Alertas
+    const alertaDiv = $("textoAlertaWalleHB");
+    if (alertaDiv && iaNode.alertas) {
+        const mensaje = Array.isArray(iaNode.alertas) ? (iaNode.alertas[0] || "") : String(iaNode.alertas);
+        if (mensaje.length > 0) {
+            alertaDiv.innerHTML = `<strong>Obtenido del historial de mediciones:</strong><br><br>${escapeHtml(mensaje).replace(/\n/g, "<br>")}`;
+            mostrar("alertasWalleHB", "block");
+        }
+    }
 
-// ========================================================
-// --- REQUISITO: GENERACIÓN DIRECTA DE REPORTE PDF ---
-// ========================================================
+    // Recomendaciones
+    const lista = $("listaRecomendacionesWalleHB");
+    if (lista && Array.isArray(iaNode.recomendaciones)) {
+        lista.replaceChildren(...iaNode.recomendaciones.map((rec) => {
+            const li = document.createElement("li");
+            li.textContent = rec;
+            li.className = "item-recommendacion-ia";
+            return li;
+        }));
+    }
+}
+
+// ----------------------------------------------------------------------------
+// Carga principal del dashboard
+// ----------------------------------------------------------------------------
+async function cargarDashboard() {
+    const id = getUserId();
+
+    const [, resDashboard, resHistorial] = await Promise.all([
+        cargarPaciente(),
+        apiFetch("Dashboard/paciente"),
+        apiFetch(`Paciente/mihistorial/${id}`)
+    ]);
+
+    if (!resDashboard.ok) {
+        alert("Su sesión ha expirado o es inválida.");
+        cerrarSesion();
+        return;
+    }
+
+    if (resHistorial.ok) {
+        const h = await resHistorial.json();
+        estado.historialCompleto = h.historial || [];
+    }
+
+    const datos = await resDashboard.json();
+    estado.nombre = datos.nombreCompleto || "Paciente";
+    estado.historialDashboard = datos.historial || [];
+
+    if (estado.historialCompleto.length === 0) {
+        pintarSinAnalisis();
+        inicializarGrafico([], [], []);
+        return;
+    }
+
+    procesarFiltroCronologico(estado.filtro);
+
+    // Estado base (y rango de referencia real) y luego el dictamen de la IA encima
+    await actualizarEstadoClinico();
+
+    const iaNode = datos.analisisIA || datos.analisisia;
+    if (iaNode) renderAnalisisIA(iaNode, registroMasReciente(estado.historialCompleto));
+}
+
+// ----------------------------------------------------------------------------
+// Reporte PDF (impresión)
+// ----------------------------------------------------------------------------
 function descargarReportePDF() {
-    if (!historialPacienteEnMemoria || historialPacienteEnMemoria.length === 0) {
+    const historial = historialActivo();
+    if (!historial.length) {
         alert("No registras análisis clínicos en tu historial para generar el reporte.");
         return;
     }
 
-    // Formatear filas de datos clínicos cronológicamente (más reciente primero)
-    const registrosOrdenTemporal = [...historialPacienteEnMemoria].reverse();
-    let filasHTML = "";
-
-    registrosOrdenTemporal.forEach((r, idx) => {
-        const valor = parseFloat(r.valorHemoglobina || r.ValorHemoglobina || 0);
-
-        let diagnostico = "Normal (Estable)";
-        let claseColor = "color: #27ae60;"; // Verde para estable
-
-        if (valor < 12) {
-            diagnostico = "Alerta de Anemia";
-            claseColor = "color: #c0392b; font-weight: bold;"; // Rojo para alerta
-        } else if (valor > 17) {
-            diagnostico = "Alerta de Poliglobulia";
-            claseColor = "color: #d35400; font-weight: bold;"; // Naranja
-        }
-
-        filasHTML += `
-            <tr>
-                <td style="padding: 10px; border-bottom: 1px solid #e2e8f0; text-align: left;">Medición ${idx + 1}</td>
-                <td style="padding: 10px; border-bottom: 1px solid #e2e8f0; text-align: center;">${r.fecha || r.Fecha || "Sin fecha"}</td>
-                <td style="padding: 10px; border-bottom: 1px solid #e2e8f0; text-align: center;">${valor.toFixed(2)} g/dL</td>
-                <td style="padding: 10px; border-bottom: 1px solid #e2e8f0; text-align: center; ${claseColor}">${diagnostico}</td>
-            </tr>
-        `;
+    // Más reciente primero
+    const ordenado = [...historial].sort((a, b) => {
+        const fa = parseFecha(leerFecha(a)), fb = parseFecha(leerFecha(b));
+        return (fb || 0) - (fa || 0);
     });
 
-    // Crear una ventana temporal en el navegador para imprimir el diseño
-    const ventanaImpresion = window.open("", "_blank");
+    const colores = { estable: "#27ae60", anemia: "#c0392b", poliglobulia: "#d35400" };
+    const filas = ordenado.map((r, idx) => {
+        const valor = leerHemo(r);
+        const { clase, pdf } = clasificarHemoglobina(valor);
+        const negrita = clase === "estable" ? "" : "font-weight: bold;";
+        return `
+            <tr>
+                <td style="padding: 10px; border-bottom: 1px solid #e2e8f0; text-align: left;">Medición ${idx + 1}</td>
+                <td style="padding: 10px; border-bottom: 1px solid #e2e8f0; text-align: center;">${escapeHtml(leerFecha(r) || "Sin fecha")}</td>
+                <td style="padding: 10px; border-bottom: 1px solid #e2e8f0; text-align: center;">${valor.toFixed(2)} g/dL</td>
+                <td style="padding: 10px; border-bottom: 1px solid #e2e8f0; text-align: center; color: ${colores[clase]}; ${negrita}">${pdf}</td>
+            </tr>`;
+    }).join("");
 
-    // Construcción del documento con estilos CSS embebidos (Idéntico a tu diseño previo)
-    ventanaImpresion.document.write(`
+    const ventana = window.open("", "_blank");
+    if (!ventana) {
+        alert("El navegador bloqueó la ventana del reporte. Permita las ventanas emergentes e inténtelo de nuevo.");
+        return;
+    }
+
+    const nombre = escapeHtml(estado.nombre || "Paciente Anónimo");
+    const tituloArchivo = escapeHtml((estado.nombre || "Paciente").replace(/\s+/g, "_"));
+
+    ventana.document.write(`
         <html>
         <head>
-            <title>Reporte_Hemoglobina_${(nombrePacienteEnMemoria || 'Paciente').replace(/\s+/g, '_')}</title>
+            <title>Reporte_Hemoglobina_${tituloArchivo}</title>
             <style>
                 body { font-family: 'Helvetica', Arial, sans-serif; margin: 0; padding: 0; color: #334155; }
                 .header { background-color: #0f172a; color: white; padding: 25px 20px; }
@@ -749,23 +554,17 @@ function descargarReportePDF() {
                 .tabla-contenedor { padding: 20px; }
                 table { width: 100%; border-collapse: collapse; margin-top: 10px; font-size: 13px; }
                 th { background-color: #2980b9; color: white; padding: 12px 10px; font-weight: bold; text-align: center; }
-                @media print {
-                    body { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
-                }
+                @media print { body { -webkit-print-color-adjust: exact; print-color-adjust: exact; } }
             </style>
         </head>
         <body>
-            <div class="header">
-                <h1>SISTEMA HB - REPORTE CLÍNICO</h1>
-            </div>
-            
+            <div class="header"><h1>SISTEMA HB - REPORTE CLÍNICO</h1></div>
             <div class="info-section">
-                <p><strong>Paciente:</strong> ${nombrePacienteEnMemoria || 'Paciente Anónimo'}</p>
-                <p><strong>Correo Electrónico:</strong> ${localStorage.getItem("usuario_correo") || 'Registrado en el sistema'}</p>
+                <p><strong>Paciente:</strong> ${nombre}</p>
+                <p><strong>Correo Electrónico:</strong> ${escapeHtml(localStorage.getItem("usuario_correo") || "Registrado en el sistema")}</p>
                 <p><strong>Fecha de Emisión:</strong> ${new Date().toLocaleDateString()}</p>
-                <p><strong>Total de Análisis Procesados:</strong> ${historialPacienteEnMemoria.length}</p>
+                <p><strong>Total de Análisis Procesados:</strong> ${historial.length}</p>
             </div>
-
             <div class="tabla-contenedor">
                 <table>
                     <thead>
@@ -776,166 +575,72 @@ function descargarReportePDF() {
                             <th>Evaluación Diagnóstica</th>
                         </tr>
                     </thead>
-                    <tbody>
-                        ${filasHTML}
-                    </tbody>
+                    <tbody>${filas}</tbody>
                 </table>
             </div>
-
             <script>
-                // Ejecuta la orden de guardado/impresión automáticamente al cargar el documento
-                window.onload = function() {
+                window.onload = function () {
                     window.print();
-                    setTimeout(function() { window.close(); }, 500);
+                    setTimeout(function () { window.close(); }, 500);
                 };
             <\/script>
         </body>
-        </html>
-    `);
-
-    ventanaImpresion.document.close();
+        </html>`);
+    ventana.document.close();
 }
-// ========================================================
-// --- TELEMETRÍA REAL EN VIVO DESDE LA NUBE DE FIREBASE ---
-// ========================================================
+
+// ----------------------------------------------------------------------------
+// Modal de análisis y telemetría desde Firebase
+// ----------------------------------------------------------------------------
+function limpiarVigilanteSensor() {
+    clearInterval(estado.sensor.intervalo);
+    clearTimeout(estado.sensor.timeout);
+    estado.sensor.intervalo = null;
+    estado.sensor.timeout = null;
+}
+
 function abrirModalAnalisis() {
+    limpiarVigilanteSensor();
+    estado.medicion = null;
     cargarObservacionesEnSelect();
-    document.getElementById("modalAnalisis").classList.add("active");
-    document.getElementById("inputSection").style.display = "block";
-    document.getElementById("loaderSection").style.display = "none";
-    document.getElementById("btnGuardarSQL").style.display = "none";
-    document.getElementById("txtSensorId").value = "";
-    document.getElementById("modalTitulo").innerText = "Vincular Dispositivo Médico";
-    document.getElementById("modalMensaje").innerText = "Por favor, ingrese manualmente el código identificador de su sensor biométrico (ej. esp32_sala_1) para iniciar.";
+
+    $("modalAnalisis")?.classList.add("active");
+    mostrar("inputSection", "flex");       // es flex en el HTML (antes se ponía "block")
+    mostrar("loaderSection", "none");
+    mostrar("iconoCarga", "none");
+    mostrar("btnGuardarSQL", "none");
+
+    const txt = $("txtSensorId");
+    if (txt) txt.value = "";
+
+    setTexto("modalTitulo", "Vincular Dispositivo Médico");
+    setTexto("modalMensaje", "Por favor, ingrese manualmente el código identificador de su sensor biométrico (ej. esp32_sala_1) para iniciar.");
 }
 
 function cerrarModalAnalisis() {
-    document.getElementById("modalAnalisis").classList.remove("active");
-    datosMedicionTemporal = null;
-}
-function iniciarVinculacionManual() {
-    const sensorId = document.getElementById("txtSensorId").value.trim();
-    if (!sensorId) {
-        alert("Por favor, ingrese un código identificador válido.");
-        return;
-    }
-
-    document.getElementById("inputSection").style.display = "none";
-    const loader = document.getElementById("loaderSection");
-    const titulo = document.getElementById("modalTitulo");
-    const mensaje = document.getElementById("modalMensaje");
-    const loaderTexto = document.getElementById("loaderTexto");
-
-    loader.style.display = "flex";
-    document.getElementById("iconoCarga").style.display = "block";
-    titulo.innerText = "Estableciendo Enlace";
-    mensaje.innerText = `Buscando canal activo para el sensor: ${sensorId}...`;
-
-    setTimeout(() => {
-        // REQUISITO EXACTO 1: Mensaje de vinculación exitosa
-        loaderTexto.innerText = "Vinculación completa, porfavor utilice el dispositivo";
-        mensaje.innerText = "Sincronización establecida. Realice la toma física de la muestra con el lector de hardware.";
-
-        escucharCambiosFirebase(sensorId);
-    }, 3000);
+    limpiarVigilanteSensor();
+    $("modalAnalisis")?.classList.remove("active");
+    estado.medicion = null;
 }
 
-function escucharCambiosFirebase(sensorId) {
-    const mensaje = document.getElementById("modalMensaje");
-    const loaderTexto = document.getElementById("loaderTexto");
-
-    // 1. MODIFICADO: Ahora apunta dinámicamente al nodo de la MAC (sensorId)
-    // Se remueven posibles dos puntos ':' por si el usuario los digita
-    const macLimpia = sensorId.replace(/:/g, "");
-    const firebaseNodoUrl = `${FIREBASE_URL}dispositivos_activos/${macLimpia}.json?nocache=${Date.now()}`;
-
-    // Configurar bucle de consulta activa (Polling) cada 2 segundos a Firebase
-    const vigilanteIntervalo = setInterval(async () => {
-        try {
-            const respuestaFirebase = await fetch(firebaseNodoUrl, { method: "GET" });
-
-            if (respuestaFirebase.ok) {
-                const datosHardwareReal = await respuestaFirebase.json();
-                console.log("lsamdlma")
-                // EVALUACIÓN DATOS REALES: Validamos que el nodo contenga el estado "Exito" que envía tu ESP32
-                if (datosHardwareReal && datosHardwareReal.mensaje === "Exito") {
-
-                    // Detener la escucha activa de red de inmediato al capturar el evento
-                    clearInterval(vigilanteIntervalo);
-
-                    // REQUISITO EXACTO 2: Mensaje de análisis finalizado
-                    loaderTexto.innerText = "Analisis terminado";
-
-                    // Mapear adaptando las propiedades del JSON real de tu ESP32 al formato temporal de tu app
-                    datosMedicionTemporal = {
-                        valor_hemoglobina: parseFloat(datosHardwareReal.hemoglobina), // Accede a "hemoglobina" de tu ESP32
-                        temperatura: parseFloat(datosHardwareReal.temperatura),       // Accede a "temperatura" de tu ESP32
-                        sensor_id: sensorId,                                          // Asigna el ID ingresado manualmente
-                        timestamp: datosHardwareReal.timestamp || Math.floor(Date.now() / 1000) // Fallback si no viene timestamp del hardware
-                    };
-                    console.log(datosMedicionTemporal);
-
-                    // 2. MODIFICADO: Petición DELETE para eliminar el nodo de la MAC de inmediato y dejarlo limpio
-                    try {
-                        await fetch(firebaseNodoUrl, { method: "DELETE" });
-                        console.log(`Nodo Firebase de la MAC ${macLimpia} eliminado correctamente.`);
-                    } catch (errorDelete) {
-                        console.error("Error al intentar limpiar el nodo en Firebase:", errorDelete);
-                    }
-
-                    // Pintar los valores REALES capturados de la nube dentro de la interfaz del modal
-                    mensaje.innerHTML = `
-<div style="text-align: left; background: #f8fafc; padding: 14px; border-radius: 10px; border: 1px solid #e2e8f0; margin-top: 10px;">
-<p style="margin: 4px 0;"><strong>📡 Sensor validado:</strong> ${datosMedicionTemporal.sensor_id}</p>
-<p style="margin: 4px 0; color: #2563eb;"><strong>🩸 Hemoglobina capturada:</strong> ${datosMedicionTemporal.valor_hemoglobina.toFixed(2)} g/dL</p>
-<p style="margin: 4px 0; color: #ef4444;"><strong>🌡️ Temperatura corporal:</strong> ${datosMedicionTemporal.temperatura.toFixed(1)} °C</p>
-</div>
-<p style="margin-top: 15px; font-weight: 600; color: var(--text-main);">Confirme la veracidad de la muestra para guardar de manera definitiva.</p>
-                    `;
-
-                    // Habilitar el paso de confirmación manual explícito para evitar fallas
-                    document.getElementById("iconoCarga").style.display = "none";
-                    document.getElementById("btnGuardarSQL").style.display = "block";
-                }
-            }
-        } catch (error) {
-            console.error("Falla de comunicación con el REST de Firebase:", error);
-        }
-    }, 2000);
-
-    // Cancelar la búsqueda de forma segura a los 60 segundos si el hardware no responde
-    setTimeout(() => {
-        if (typeof datosMedicionTemporal === 'undefined' || !datosMedicionTemporal) {
-            if (vigilanteIntervalo) clearInterval(vigilanteIntervalo);
-            document.getElementById("iconoCarga").style.display = "none";
-            loaderTexto.innerText = "Tiempo agotado";
-            mensaje.innerText = "No se detectó el envío de datos desde el sensor. Inténtelo de nuevo.";
-        }
-    }, 60000);
-}
-
+const urlNodoSensor = (sensorId) =>
+    `${FIREBASE_URL}dispositivos_activos/${encodeURIComponent(sensorId.replace(/:/g, ""))}.json`;
 
 async function iniciarVinculacionManual() {
-    const sensorId = document.getElementById("txtSensorId").value.trim();
+    const sensorId = ($("txtSensorId")?.value || "").trim();
     if (!sensorId) {
         alert("Por favor, ingrese un código identificador válido.");
         return;
     }
 
-    // 1. RESTRICCIÓN: Construir la URL de verificación para ver si el nodo ya existe
-    const macLimpia = sensorId.replace(/:/g, "");
-    const urlVerificacion = `${FIREBASE_URL}dispositivos_activos/${macLimpia}.json?nocache=${Date.now()}`;
+    const urlNodo = urlNodoSensor(sensorId);
 
+    // Restricción: el sensor no debe estar en uso por otro usuario
     try {
-        // Hacemos una consulta rápida de lectura
-        const verificarNodo = await fetch(urlVerificacion, { method: "GET" });
-        if (verificarNodo.ok) {
-            const datosExistentes = await verificarNodo.json();
-            // Si el nodo NO es null, significa que ya hay una medición activa de alguien más
-            if (datosExistentes !== null) {
-                alert("⚠️ El dispositivo sensor ya se encuentra en uso por otro usuario. Por favor, espere a que termine o intente con otra MAC.");
-                return; // 🛑 Detiene la función por completo y no permite enlazar
-            }
+        const verificar = await fetch(`${urlNodo}?nocache=${Date.now()}`, { method: "GET", cache: "no-store" });
+        if (verificar.ok && (await verificar.json()) !== null) {
+            alert("⚠️ El dispositivo sensor ya se encuentra en uso por otro usuario. Por favor, espere a que termine o intente con otra MAC.");
+            return;
         }
     } catch (error) {
         console.error("Error al verificar la disponibilidad del sensor:", error);
@@ -943,187 +648,194 @@ async function iniciarVinculacionManual() {
         return;
     }
 
-    // 2. FLUJO NORMAL: Si pasó la verificación (el nodo está vacío/null), procedemos con el diseño y la escucha
-    document.getElementById("inputSection").style.display = "none";
-    const loader = document.getElementById("loaderSection");
-    const titulo = document.getElementById("modalTitulo");
-    const mensaje = document.getElementById("modalMensaje");
-    const loaderTexto = document.getElementById("loaderTexto");
+    mostrar("inputSection", "none");
+    mostrar("loaderSection", "flex");
+    mostrar("iconoCarga", "block");
+    mostrar("loaderTexto", "block");
+    setTexto("loaderTexto", "Conectando...");
+    setTexto("modalTitulo", "Estableciendo Enlace");
+    setTexto("modalMensaje", `Buscando canal activo para el sensor: ${sensorId}...`);
 
-    loader.style.display = "flex";
-    document.getElementById("iconoCarga").style.display = "block";
-    titulo.innerText = "Estableciendo Enlace";
-    mensaje.innerText = `Buscando canal activo para el sensor: ${sensorId}...`;
-
-    setTimeout(() => {
-        loaderTexto.innerText = "Vinculación completa, porfavor utilice el dispositivo";
-        mensaje.innerText = "Sincronización establecida. Realice la toma física de la muestra con el lector de hardware.";
-
-        escucharCambiosFirebase(sensorId);
+    estado.sensor.timeout = setTimeout(() => {
+        setTexto("loaderTexto", "Vinculación completa, porfavor utilice el dispositivo");
+        setTexto("modalMensaje", "Sincronización establecida. Realice la toma física de la muestra con el lector de hardware.");
+        escucharCambiosFirebase(sensorId, urlNodo);
     }, 3000);
 }
 
-// --- PASO EXTRA DE PERSISTENCIA EXPLICITA REQUERIDO ---
+function escucharCambiosFirebase(sensorId, urlNodo) {
+    limpiarVigilanteSensor();
+    let consultando = false;
+
+    estado.sensor.intervalo = setInterval(async () => {
+        if (consultando) return; // evita consultas superpuestas
+        consultando = true;
+        try {
+            const resp = await fetch(`${urlNodo}?nocache=${Date.now()}`, { method: "GET", cache: "no-store" });
+            if (!resp.ok) return;
+
+            const hw = await resp.json();
+            if (!hw || hw.mensaje !== "Exito") return;
+
+            limpiarVigilanteSensor();
+
+            const hemoglobina = parseFloat(hw.hemoglobina);
+            const temperatura = parseFloat(hw.temperatura);
+            if (isNaN(hemoglobina) || isNaN(temperatura)) {
+                mostrar("iconoCarga", "none");
+                setTexto("loaderTexto", "Datos inválidos");
+                setTexto("modalMensaje", "El sensor envió valores no numéricos. Inténtelo de nuevo.");
+                return;
+            }
+
+            setTexto("loaderTexto", "Analisis terminado");
+            estado.medicion = {
+                valor_hemoglobina: hemoglobina,
+                temperatura: temperatura,
+                sensor_id: sensorId,
+                timestamp: hw.timestamp || Math.floor(Date.now() / 1000)
+            };
+
+            // Limpiar el nodo del sensor para dejarlo libre
+            fetch(urlNodo, { method: "DELETE" }).catch((e) =>
+                console.error("Error al intentar limpiar el nodo en Firebase:", e));
+
+            const m = $("modalMensaje");
+            if (m) {
+                m.innerHTML = `
+<div style="text-align: left; background: #f8fafc; padding: 14px; border-radius: 10px; border: 1px solid #e2e8f0; margin-top: 10px;">
+<p style="margin: 4px 0;"><strong>📡 Sensor validado:</strong> ${escapeHtml(sensorId)}</p>
+<p style="margin: 4px 0; color: #2563eb;"><strong>🩸 Hemoglobina capturada:</strong> ${hemoglobina.toFixed(2)} g/dL</p>
+<p style="margin: 4px 0; color: #ef4444;"><strong>🌡️ Temperatura corporal:</strong> ${temperatura.toFixed(1)} °C</p>
+</div>
+<p style="margin-top: 15px; font-weight: 600; color: var(--text-main);">Confirme la veracidad de la muestra para guardar de manera definitiva.</p>`;
+            }
+
+            mostrar("iconoCarga", "none");
+            mostrar("btnGuardarSQL", "block");
+        } catch (error) {
+            console.error("Falla de comunicación con el REST de Firebase:", error);
+        } finally {
+            consultando = false;
+        }
+    }, POLLING_MS);
+
+    // Tiempo máximo de espera del hardware
+    estado.sensor.timeout = setTimeout(() => {
+        if (estado.medicion) return;
+        limpiarVigilanteSensor();
+        mostrar("iconoCarga", "none");
+        setTexto("loaderTexto", "Tiempo agotado");
+        setTexto("modalMensaje", "No se detectó el envío de datos desde el sensor. Inténtelo de nuevo.");
+    }, TIMEOUT_SENSOR_MS);
+}
+
 async function ejecutarGuardadoDefinitivo() {
-    if (!datosMedicionTemporal) return;
+    const medicion = estado.medicion;
+    if (!medicion) return;
 
-    // Captura el ID numérico seleccionado del combobox de observaciones
-    const idObservacionSeleccionada = document.getElementById("cboObservaciones")?.value || 0;
+    const idObservacion = $("cboObservaciones")?.value || 0;
 
-    const token = localStorage.getItem("token_seguridad");
-    const mensaje = document.getElementById("modalMensaje");
-    const loaderTexto = document.getElementById("loaderTexto");
-
-    document.getElementById("btnGuardarSQL").style.display = "none";
-    document.getElementById("iconoCarga").style.display = "block";
-    loaderTexto.innerText = "Guardando...";
+    mostrar("btnGuardarSQL", "none");
+    mostrar("iconoCarga", "block");
+    setTexto("loaderTexto", "Guardando...");
 
     try {
-        // Se añade idObservacionSeleccionada a la URL de forma dinámica
-        const respuestaBackend = await fetch(`${API_URL}Dashboard/guardarAnalisis/${idObservacionSeleccionada}`, {
+        const respuesta = await apiFetch(`Dashboard/guardarAnalisis/${idObservacion}`, {
             method: "POST",
-            headers: {
-                "Authorization": "Bearer " + token.trim(),
-                "Content-Type": "application/json"
-            },
             body: JSON.stringify({
-                valorHemoglobina: datosMedicionTemporal.valor_hemoglobina,
-                temperatura: datosMedicionTemporal.temperatura,
+                valorHemoglobina: medicion.valor_hemoglobina,
+                temperatura: medicion.temperatura,
                 fechaAnalisis: new Date().toISOString()
             })
         });
 
-        if (respuestaBackend.ok) {
-            loaderTexto.innerText = "¡Sincronizado!";
-            mensaje.innerText = "Análisis registrado de manera permanente en el servidor de la clínica.";
+        if (respuesta.ok) {
+            setTexto("loaderTexto", "¡Sincronizado!");
+            setTexto("modalMensaje", "Análisis registrado de manera permanente en el servidor de la clínica.");
             setTimeout(() => {
                 cerrarModalAnalisis();
-                window.location.reload(); // Fuerza la recarga inmediata para volver a armar el eje X secuencial
+                cargarDashboard().catch((e) => console.error("Error al refrescar el dashboard:", e)); // sin recargar la página
             }, 2000);
+            location.reload();
         } else {
+            mostrar("iconoCarga", "none");
             alert("No se pudo completar el almacenamiento de la medición en la base de datos central.");
-            document.getElementById("btnGuardarSQL").style.display = "block";
+            mostrar("btnGuardarSQL", "block");
         }
     } catch (error) {
         console.error("Error al conectar con el backend de C#:", error);
-        document.getElementById("btnGuardarSQL").style.display = "block";
+        mostrar("iconoCarga", "none");
+        mostrar("btnGuardarSQL", "block");
     }
 }
 
+// ----------------------------------------------------------------------------
+// Compartir reporte por correo
+// ----------------------------------------------------------------------------
 function abrirModalEnvioCorreos() {
-    console.log("Abriendo modal...");
-    const modal = document.getElementById("modalEnvioCorreos");
-    
-    if (modal) {
-        modal.classList.add("active");
-        
-        // Forzamos un pequeño retraso de 50 milisegundos para garantizar 
-        // que el navegador ya renderizó el HTML del modal antes de buscar la lista
-        setTimeout(() => {
-            console.log("Llamando de forma segura a cargarMedicosAsociados()...");
-            cargarMedicosAsociados();
-        }, 50);
-        
-    } else {
+    const modal = $("modalEnvioCorreos");
+    if (!modal) {
         console.error("No se encontró el elemento HTML con id 'modalEnvioCorreos'");
+        return;
     }
+    modal.classList.add("active");
+    cargarMedicosAsociados();
+}
+
+function cerrarModalEnvioCorreos() {
+    $("modalEnvioCorreos")?.classList.remove("active");
 }
 
 async function cargarMedicosAsociados() {
-    console.log("hoiaaaaa");
-    console.log("=== INICIANDO CARGA DE MÉDICOS ===");
-    const id = localStorage.getItem("usuario_id");
-    const token = localStorage.getItem("token_seguridad");
-    const contenedor = document.getElementById("listaMedicosReporte");
+    const contenedor = $("listaMedicosReporte");
+    if (!contenedor) return;
 
     try {
-        const respuesta = await fetch(`${API_URL}Paciente/mismedicos/${id}`, {
-            method: "GET",
-            headers: {
-                "Authorization": "Bearer " + token,
-                "Content-Type": "application/json"
-            }
-        });
-
-        // Validación: Si el backend devuelve un error (ej. 401, 404, 500)
-        if (!respuesta.ok) {
-            throw new Error(`Error en el servidor: ${respuesta.status}`);
-        }
+        const respuesta = await apiFetch(`Paciente/mismedicos/${getUserId()}`);
+        if (!respuesta.ok) throw new Error(`Error en el servidor: ${respuesta.status}`);
 
         const medicos = await respuesta.json();
-        contenedor.innerHTML = ""; // Limpiamos el texto de "Cargando médicos..."
-
         if (!medicos || medicos.length === 0) {
             contenedor.innerHTML = "<div style='text-align:center; padding:10px;'>No se encontraron médicos asociados.</div>";
             return;
         }
 
-        let html = "";
-        medicos.forEach(m => {
-            // Mapeo adaptado al JSON en minúsculas (camelCase) de .NET
-            const nombre = m.nombre || "Sin Nombre";
-            const paterno = m.paterno || "";
-            const materno = m.materno || "";
+        contenedor.innerHTML = medicos.map((m) => {
+            const nombre = `${m.nombre || "Sin Nombre"} ${m.paterno || ""} ${m.materno || ""}`.trim();
             const especialidad = m.especialidad || "Sin Especialidad";
-            
-            // Accedemos a la propiedad interna del objeto correo que viene de tu base de datos
-            const correoMedico = m.correo?.correoElectronico || "Sin Correo";
-
-            html += `
-            <div style="
-                border:1px solid #e2e8f0;
-                border-radius:10px;
-                padding:12px;
-                margin-bottom:10px;
-                background:#f8fafc;
-                text-align: left;
-            ">
-                <strong>Dr(a). ${nombre} ${paterno} ${materno}</strong>
-                <br>
-                <small style="color: #64748b;">${especialidad}</small>
-                <br>
-                <small style="color: #0f172a; font-weight: 500;">${correoMedico}</small>
-                <br><br>
-                <button class="btn btn-primary btn-enviar-reporte" data-correo="${correoMedico}">
-                    Enviar Reporte
-                </button>
-            </div>
-            `;
-        });
-
-        contenedor.innerHTML = html;
-
-        // Asignamos el evento click de manera dinámica y segura para evitar errores de comillas
-        contenedor.querySelectorAll(".btn-enviar-reporte").forEach(boton => {
-            boton.addEventListener("click", function() {
-                const correo = this.getAttribute("data-correo");
-                enviarReporteCorreo(correo);
-            });
-        });
-
+            const correo = m.correo?.correoElectronico || "Sin Correo";
+            return `
+            <div style="border:1px solid #e2e8f0; border-radius:10px; padding:12px; margin-bottom:10px; background:#f8fafc; text-align:left;">
+                <strong>Dr(a). ${escapeHtml(nombre)}</strong><br>
+                <small style="color:#64748b;">${escapeHtml(especialidad)}</small><br>
+                <small style="color:#0f172a; font-weight:500;">${escapeHtml(correo)}</small><br><br>
+                <button class="btn btn-primary btn-enviar-reporte" data-correo="${escapeHtml(correo)}">Enviar Reporte</button>
+            </div>`;
+        }).join("");
     } catch (error) {
         console.error("Error en cargarMedicosAsociados:", error);
-        contenedor.innerHTML = `
-        <div style='color:red; text-align:center; padding:10px;'>
-            Error al cargar médicos. Verifique su conexión o sesión.
-        </div>
-        `;
+        contenedor.innerHTML = "<div style='color:red; text-align:center; padding:10px;'>Error al cargar médicos. Verifique su conexión o sesión.</div>";
     }
 }
 
 function enviarCorreoPersonalizado() {
-    const correo = document.getElementById("txtCorreoPersonalizado").value.trim();
-
+    const correo = ($("txtCorreoPersonalizado")?.value || "").trim();
     if (!correo) {
         alert("Ingrese un correo.");
         return;
     }
-
-    enviarReporteCorreo(correo);
-}
-
-function cerrarModalEnvioCorreos() {
-    document.getElementById("modalEnvioCorreos").classList.remove("active");
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(correo)) {
+        alert("Ingrese un correo electrónico válido.");
+        return;
+    }
+    const mensajeConfirmacion = `¿Está seguro de que desea enviar el reporte clínico al siguiente destinatario?\n\n📩 Correo: ${correo}`;
+    if (window.confirm(mensajeConfirmacion)) {
+        enviarReporteCorreo(correo);
+    } else {
+        // Si el usuario presiona "Cancelar", se detiene la ejecución
+        console.log("Envío de correo cancelado por el usuario.");
+    }
 }
 
 async function enviarReporteCorreo(correo) {
@@ -1132,19 +844,12 @@ async function enviarReporteCorreo(correo) {
         return;
     }
 
-    console.log("Enviando reporte al destinatario:", correo);
-    const id = localStorage.getItem("usuario_id");
-
     try {
-        // Usamos encodeURIComponent para proteger caracteres especiales como el '@' en la URL
-        const respuesta = await fetch(
-            `${API_URL}Email/enviar-reporte?id_usuario=${id}&correo_electronico=${encodeURIComponent(correo)}`,
+        const respuesta = await apiFetch(
+            `Email/enviar-reporte?id_usuario=${encodeURIComponent(getUserId())}&correo_electronico=${encodeURIComponent(correo)}`,
             { method: "POST" }
         );
-
-        if (!respuesta.ok) {
-            throw new Error(`Error al enviar: ${respuesta.status}`);
-        }
+        if (!respuesta.ok) throw new Error(`Error al enviar: ${respuesta.status}`);
 
         const datos = await respuesta.json();
         alert(datos.mensaje || "Reporte enviado con éxito.");
@@ -1154,5 +859,43 @@ async function enviarReporteCorreo(correo) {
     }
 }
 
+// ----------------------------------------------------------------------------
+// Inicialización
+// ----------------------------------------------------------------------------
+document.addEventListener("DOMContentLoaded", async () => {
+    $("btnCerrarSesion")?.addEventListener("click", cerrarSesion);
 
+    // Filtros de tiempo (delegación de eventos)
+    document.querySelector(".filtros-botones")?.addEventListener("click", (e) => {
+        const btn = e.target.closest(".btn-filtro");
+        if (btn && btn.dataset.filtro) procesarFiltroCronologico(btn.dataset.filtro);
+    });
 
+    // Botones "Enviar Reporte" de la lista de médicos (delegación de eventos)
+    $("listaMedicosReporte")?.addEventListener("click", (e) => {
+        const btn = e.target.closest(".btn-enviar-reporte");
+        if (btn) enviarReporteCorreo(btn.dataset.correo);
+    });
+
+    // Redibujar gráficos al cambiar el tamaño de la ventana
+    let temporizadorResize = null;
+    window.addEventListener("resize", () => {
+        clearTimeout(temporizadorResize);
+        temporizadorResize = setTimeout(() => {
+            graficoHemoInstancia?.redibujar();
+            graficoTempInstancia?.redibujar();
+        }, 150);
+    });
+
+    if (!getToken()) {
+        alert("Acceso no autorizado. Por favor, inicie sesión nuevamente.");
+        window.location.href = "../index.html";
+        return;
+    }
+
+    try {
+        await cargarDashboard();
+    } catch (error) {
+        console.error("Error crítico detectado en la inicialización:", error);
+    }
+});
