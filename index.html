@@ -87,7 +87,7 @@
       }
 
       // 2. Damos un respiro al motor del navegador para que renderice el spinner
-      await new Promise(resolve => setTimeout(resolve, 60));
+      await new Promise(resolve => setTimeout(resolve, 180));
 
       try {
         const respuesta = await fetch(`${API_URL}Autenticacion/login`, {

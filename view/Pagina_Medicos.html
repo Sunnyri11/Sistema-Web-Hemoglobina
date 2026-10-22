@@ -10,9 +10,21 @@
 <body>
     <nav>
         <div class="logo">Sistema <span>HB</span></div>
-        <button id="btnEditarPerfil" class="btn btn-warning">Editar Perfil</button>
-        <a href="estadisticas.html" target="_blank" rel="noopener noreferrer" class="btn btn-primary">Ver más estadisticas</a>
-        <button id="btnCerrarSesion" class="btn-logout">Cerrar Sesión</button>
+
+        <!-- BOTÓN HAMBURGUESA (Visible solo en móviles) -->
+        <button class="nav-toggle" id="navToggle" aria-label="Abrir menú">
+            <span></span>
+            <span></span>
+            <span></span>
+        </button>
+
+        <!-- CONTENEDOR DE ENLACES / BOTONES DE ACCIÓN -->
+        <div class="nav-links" id="navLinks">
+            <button id="btnEditarPerfil" class="btn btn-warning">Editar Perfil</button>
+            <a href="estadisticas.html" target="_blank" rel="noopener noreferrer" class="btn btn-primary">Ver más
+                estadisticas</a>
+            <button id="btnCerrarSesion" class="btn-logout">Cerrar Sesión</button>
+        </div>
     </nav>
 
     <main>
