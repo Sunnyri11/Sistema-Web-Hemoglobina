@@ -12,192 +12,234 @@
 
 <body>
 
-  <div class="container">
-    <div class="left-section">
-      <div>
-        <h1>Sistema de Monitoreo</h1>
-        <div class="subtitle">Panel de Control de Usuario</div>
-        <div class="paciente-info" id="infoPaciente">
-          <p style="text-align: center; color: var(--text-muted);">Sincronizando expediente con el servidor central...
-          </p>
+  <div class="dashboard-wrapper">
+    
+    <!-- 1. BARRA DE NAVEGACIÓN SUPERIOR FIJA -->
+    <header class="top-navbar">
+      <div class="nav-brand-container">
+        <div class="app-icon">
+          <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg>
+        </div>
+        <div>
+          <h1>Sistema de Monitoreo</h1>
+          <div class="subtitle">Panel de Control de Usuario</div>
         </div>
       </div>
 
-
-      <div id="alertasWalleHB" class="contenedor-ia-reporte" style="display: none;">
-        <h4 class="titulo-ia">🤖 Diagnóstico Evolutivo de Walle-HB</h4>
-        <p id="textoAlertaWalleHB" class="texto-alerta-ia"></p>
-
-        <h5 class="subtitulo-ia">📋 Recomendaciones de Salud Sugeridas:</h5>
-        <ul id="listaRecomendacionesWalleHB" class="lista-ia">
-          <!-- Aquí se inyectan las recomendaciones una a una desde JavaScript -->
-        </ul>
-      </div>
-
-      <div class="btn-group" style="margin-top: 20px;">
-        <button class="btn btn-analisis" onclick="abrirModalAnalisis()">
-          Realizar Análisis Clínico
-        </button>
-        <!-- Función de descarga de reporte PDF -->
-        <button class="btn btn-reportes" onclick="descargarReportePDF()">
-          Ver Reportes Históricos
-        </button>
-
-        <button class="btn btn-info" onclick="abrirModalEnvioCorreos()">
-          📧 Compartir Reporte
-        </button>
-
-        <a class="btn btn-warning" href="EditarPaciente.html">Editar Perfil</a>
-        <button class="btn btn-logout" id="btnCerrarSesion">
-          Cerrar Sesión
+      <div class="nav-right-controls">
+        <div class="status-indicator-box">
+          <span class="status-dot-online"></span>
+          <span class="status-text" id="statusOnlineText">En línea</span>
+        </div>
+        <!-- Botón de Cerrar Sesión ubicado en la esquina superior derecha -->
+        <button class="btn-logout-icon" id="btnCerrarSesion" title="Cerrar Sesión">
+          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path><polyline points="16 17 21 12 16 7"></polyline><line x1="21" y1="12" x2="9" y2="12"></line></svg>
         </button>
       </div>
-    </div>
+    </header>
 
-    <div class="right-section">
+    <!-- CONTENEDOR PRINCIPAL DE DOS COLUMNAS -->
+    <div class="container-grid">
+      
+      <!-- COLUMNA IZQUIERDA: PERFIL, ESTADO CLÍNICO Y WALLE-HB -->
+      <div class="left-section">
+        
+        <!-- Tarjeta de Datos del Usuario con Botón de Editar al Costado -->
+      <div class="paciente-info-card">
+        <div class="paciente-profile-header">
+          <div class="avatar-circle">
+            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg>
+          </div>
+          <div class="paciente-names">
+            <h4 id="nombrePacienteDisplay">Cargando...</h4>
+            <span id="correoPacienteDisplay">sincronizando...</span>
+          </div>
+          <!-- Botón de Editar Perfil al costado de la información -->
+          <a class="btn-edit-profile" href="EditarPaciente.html" title="Editar Perfil">
+            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path></svg>
+          </a>
+        </div>
 
-      <div class="filtros-contenedor"
-        style="margin-bottom: 25px; padding: 10px; background: #fff; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.02);">
-        <span style="font-weight: 700; color: #1e293b; display: block; margin-bottom: 10px; font-size: 14px;">Filtrar
-          historial por tiempo:</span>
-        <div style="display: flex; gap: 8px; flex-wrap: wrap;">
-          <button class="btn"
-            style="background-color: #e2e8f0; color: #334155; padding: 8px 16px; min-width: auto; font-size: 13px;"
-            onclick="aplicarFiltroTiempo('dias')">Hoy</button>
-          <button class="btn"
-            style="background-color: #e2e8f0; color: #334155; padding: 8px 16px; min-width: auto; font-size: 13px;"
-            onclick="aplicarFiltroTiempo('semanas')">7 Días</button>
-          <button class="btn"
-            style="background-color: #e2e8f0; color: #334155; padding: 8px 16px; min-width: auto; font-size: 13px;"
-            onclick="aplicarFiltroTiempo('meses')">Mes</button>
-          <button class="btn"
-            style="background-color: #e2e8f0; color: #334155; padding: 8px 16px; min-width: auto; font-size: 13px;"
-            onclick="aplicarFiltroTiempo('anos')">Año</button>
-          <button class="btn"
-            style="background-color: var(--primary, #818cf8); color: #fff; padding: 8px 16px; min-width: auto; font-size: 13px; font-weight: bold;"
-            onclick="aplicarFiltroTiempo('todos')">Ver Todo</button>
+        <div class="paciente-details-grid">
+          <div class="detail-row"><span>Edad</span> <strong id="edadDisplay">-</strong></div>
+          <div class="detail-row"><span>Departamento</span> <strong id="deptoDisplay">-</strong></div>
+          <div class="detail-row"><span>Ciudad</span> <strong id="ciudadDisplay">-</strong></div>
+          <div class="detail-row"><span>Tipo de Sangre</span> <strong id="sangreDisplay">-</strong></div>
         </div>
       </div>
 
-      <!-- Gráfico de Hemoglobina -->
-      <h3 style="margin-top: 15px; margin-bottom: 10px;">Evolución de Niveles de Hemoglobina</h3>
-      <div class="chart-container"
-        style="position: relative; height:240px; width:100%; margin-bottom: 35px; background: #fff; border-radius: 8px; padding: 10px;">
-        <canvas id="graficoHemoglobina"></canvas>
+      <!-- Tarjeta de Estado Clínico y Temperatura con Marco Dinámico -->
+      <div id="estadoPaciente" class="estado estable">
+        <div class="estado-icon-wrapper">
+          <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg>
+        </div>
+        <div class="estado-text-content">
+          <span class="estado-title-label">ESTADO</span>
+          <strong>FISIOLÓGICAMENTE ESTABLE</strong>
+          <span class="estado-detalle-medicion">(15.26 G/DL) TEMPERATURA: 36.88 °C</span>
+        </div>
       </div>
 
-      <!-- Gráfico de Temperatura -->
-      <h3 style="margin-bottom: 10px;">Evolución de Temperatura</h3>
-      <div class="chart-container"
-        style="position: relative; height:240px; width:100%; background: #fff; border-radius: 8px; padding: 10px;">
-        <canvas id="graficoTemperatura"></canvas>
+        <!-- APARTADO WALLE-HB (Mantenido intacto y ubicado debajo de las características) -->
+        <div id="alertasWalleHB" class="contenedor-ia-reporte" style="display: none;">
+          <h4 class="titulo-ia">🤖 Diagnóstico Evolutivo de Walle-HB</h4>
+          <p id="textoAlertaWalleHB" class="texto-alerta-ia"></p>
+
+          <h5 class="subtitulo-ia">📋 Recomendaciones de Salud Sugeridas:</h5>
+          <ul id="listaRecomendacionesWalleHB" class="lista-ia">
+            <!-- Se inyectan dinámicamente desde JavaScript -->
+          </ul>
+        </div>
+      </div>
+
+      <!-- COLUMNA DERECHA: FILTROS, GRÁFICAS Y BOTONES INFERIORES -->
+      <div class="right-section">
+        
+        <!-- Filtros de tiempo superiores -->
+        <div class="filtros-contenedor">
+          <div class="filtros-header-row">
+            <span class="filtros-label">
+              <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display:inline; margin-right:6px;"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect><line x1="16" y1="2" x2="16" y2="6"></line><line x1="8" y1="2" x2="8" y2="6"></line><line x1="3" y1="10" x2="21" y2="10"></line></svg>
+              Filtrar historial por tiempo:
+            </span>
+          </div>
+          <div class="filtros-botones">
+            <button class="btn-filtro" onclick="aplicarFiltroTiempo('dias')">Hoy</button>
+            <button class="btn-filtro" onclick="aplicarFiltroTiempo('semanas')">7 Días</button>
+            <button class="btn-filtro" onclick="aplicarFiltroTiempo('meses')">Mes</button>
+            <button class="btn-filtro" onclick="aplicarFiltroTiempo('anos')">Año</button>
+            <button class="btn-filtro active" onclick="aplicarFiltroTiempo('todos')">
+              <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-right: 4px;"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path><circle cx="12" cy="12" r="3"></circle></svg>
+              Ver Todo
+            </button>
+          </div>
+        </div>
+
+        <!-- Contenedores de Gráficos Centrados y Proporcionales -->
+        <div class="charts-scroll-area">
+          <div class="chart-wrapper-card">
+            <h3>
+              <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-right: 6px;"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"></polyline></svg>
+              Evolución de Niveles de Hemoglobina
+            </h3>
+            <div class="chart-container">
+              <canvas id="graficoHemoglobina"></canvas>
+            </div>
+          </div>
+
+          <div class="chart-wrapper-card">
+            <h3>
+              <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-right: 6px;"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"></polyline></svg>
+              Evolución de Temperatura
+            </h3>
+            <div class="chart-container">
+              <canvas id="graficoTemperatura"></canvas>
+            </div>
+          </div>
+        </div>
+
+        <!-- Botones de Acción Inferiores Ocupando Toda la Parte Inferior -->
+        <div class="bottom-action-buttons">
+          <button class="btn-action-card btn-analisis-card" onclick="abrirModalAnalisis()">
+            <div class="card-icon-wrapper">
+              <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10 2v7.527a2 2 0 0 1-.211.896L4.72 20.55a1 1 0 0 0 .9 1.45h12.76a1 1 0 0 0 .9-1.45l-5.069-10.127A2 2 0 0 1 14 9.527V2"></path><line x1="8.5" y1="2" x2="15.5" y2="2"></line><line x1="7" y1="12" x2="17" y2="12"></line></svg>
+            </div>
+            <div class="card-text-content">
+              <strong>Realizar Análisis Clínico</strong>
+            </div>
+            <span class="arrow-icon">›</span>
+          </button>
+
+          <button class="btn-action-card btn-reportes-card" onclick="descargarReportePDF()">
+            <div class="card-icon-wrapper">
+              <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line><polyline points="10 9 9 9 8 9"></polyline></svg>
+            </div>
+            <div class="card-text-content">
+              <strong>Ver Reportes Históricos</strong>
+            </div>
+            <span class="arrow-icon">›</span>
+          </button>
+
+          <button class="btn-action-card btn-compartir-card" onclick="abrirModalEnvioCorreos()">
+            <div class="card-icon-wrapper">
+              <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="18" cy="5" r="3"></circle><circle cx="6" cy="12" r="3"></circle><circle cx="18" cy="19" r="3"></circle><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"></line><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"></line></svg>
+            </div>
+            <div class="card-text-content">
+              <strong>Compartir Reporte</strong>
+            </div>
+            <span class="arrow-icon">›</span>
+          </button>
+        </div>
+
       </div>
     </div>
 
-
-
+    <!-- MODAL DE ANÁLISIS CLÍNICO -->
     <div id="modalAnalisis" class="modal-overlay">
       <div class="modal-box">
         <button class="btn-close-modal" onclick="cerrarModalAnalisis()">&times;</button>
-        <h2 id="modalTitulo">Vincular Dispositivo Médico</h2>
-        <p id="modalMensaje">Por favor, ingrese manualmente el código identificador de su sensor biométrico para
-          iniciar.</p>
+        <h2>Vincular Dispositivo Médico</h2>
+        <p id="modalMensaje">Por favor, ingrese manualmente el código identificador de su sensor biométrico para iniciar.</p>
 
-        <!-- Sección de Entradas Principales -->
         <div id="inputSection" style="display: flex; flex-direction: column; gap: 15px; width: 85%; margin: 0 auto;">
+          <input type="text" id="txtSensorId" class="input-codigo" placeholder="Escriba el código del sensor..." autocomplete="off" style="width: 100%;">
 
-          <input type="text" id="txtSensorId" class="input-codigo" placeholder="Escriba el código del sensor..."
-            autocomplete="off" style="width: 100%;">
-
-          <!-- NUEVO: Selector de condiciones médicas, siempre estructurado y alineado con tus estilos -->
           <div id="selectObservacionSection" style="text-align: left; width: 100%;">
-            <label for="cboObservaciones"
-              style="font-weight: 600; font-size: 14px; color: #555; display: block; margin-bottom: 6px;">
+            <label for="cboObservaciones" style="font-weight: 600; font-size: 14px; color: #555; display: block; margin-bottom: 6px;">
               🩺 Condición Médica / Observación:
             </label>
-            <select id="cboObservaciones" class="input-codigo"
-              style="width: 100%; height: 42px; font-size: 15px; padding: 5px 12px; border: 1px solid #ccc; border-radius: 8px; background-color: #fff;">
-              <!-- Se carga dinámicamente mediante JS -->
+            <select id="cboObservaciones" class="input-codigo" style="width: 100%; height: 42px; font-size: 15px; padding: 5px 12px; border: 1px solid #ccc; border-radius: 8px; background-color: #fff;">
             </select>
           </div>
 
-          <button class="btn btn-analisis" style="background-color: var(--primary); width: 100%;"
-            onclick="iniciarVinculacionManual()">
+          <button class="btn btn-analisis-modal" style="background-color: var(--primary); width: 100%; color: #fff; padding: 12px; border:none; border-radius:8px; font-weight:700;" onclick="iniciarVinculacionManual()">
             Vincular Código
           </button>
         </div>
 
-        <!-- Sección de Carga y Guardado Final -->
         <div id="loaderSection" class="spinner-box" style="margin-top: 15px;">
           <div class="spinner" id="iconoCarga" style="display: none;"></div>
-          <h4 id="loaderTexto" style="color: var(--primary); font-weight: 700; margin-bottom: 12px; display: none;">
-            Conectando...</h4>
+          <h4 id="loaderTexto" style="color: var(--primary); font-weight: 700; margin-bottom: 12px; display: none;">Conectando...</h4>
 
-          <button id="btnGuardarSQL" class="btn"
-            style="background-color: var(--success); color: #fff; display: none; width: 85%; margin: 10px auto 0 auto;"
-            onclick="ejecutarGuardadoDefinitivo()">
+          <button id="btnGuardarSQL" class="btn" style="background-color: var(--success); color: #fff; display: none; width: 85%; margin: 10px auto 0 auto;" onclick="ejecutarGuardadoDefinitivo()">
             Guardar Análisis
           </button>
         </div>
       </div>
     </div>
 
+    <!-- MODAL DE CORREOS -->
     <div id="modalEnvioCorreos" class="modal-overlay">
-
       <div class="modal-box">
-
-        <button class="btn-close-modal" onclick="cerrarModalEnvioCorreos()">
-          &times;
-        </button>
-
+        <button class="btn-close-modal" onclick="cerrarModalEnvioCorreos()">&times;</button>
         <h2>Compartir Reporte Clínico</h2>
-
-        <p>
-          Seleccione uno de sus médicos asociados o escriba
-          un correo personalizado.
-        </p>
+        <p>Seleccione uno de sus médicos asociados o escriba un correo personalizado.</p>
 
         <div id="listaMedicosReporte">
-
-          <div style="
-                text-align:center;
-                padding:20px;
-                color:#64748b;
-            ">
-            Cargando médicos...
-          </div>
-
+          <div style="text-align:center; padding:20px; color:#64748b;">Cargando médicos...</div>
         </div>
 
-        <hr>
+        <hr style="margin: 15px 0;">
 
-        <div style="
-            display:flex;
-            flex-direction:column;
-            gap:12px;
-        ">
-
-          <h5>Otro destinatario</h5>
-
+        <div style="display:flex; flex-direction:column; gap:12px; text-align: left;">
+          <h5 style="font-size: 14px; font-weight: 700;">Otro destinatario</h5>
           <input type="email" id="txtCorreoPersonalizado" class="input-codigo" placeholder="correo@ejemplo.com">
-
-          <button class="btn btn-success" onclick="enviarCorreoPersonalizado()">
-
-            Enviar Reporte
-          </button>
-
+          <button class="btn btn-success" style="background-color: var(--success); color: #fff; padding: 12px; border:none; border-radius:8px; font-weight:700;" onclick="enviarCorreoPersonalizado()">Enviar Reporte</button>
         </div>
-
       </div>
-
     </div>
-    <!-- CDN para bibliotecas externas -->
-    <script src="https://cloudflare.com"></script>
-    <script src="https://cloudflare.com"></script>
-    <script src="https://cloudflare.com"></script>
 
-    <script src="../public/js/config.js"></script>
-    <script src="../public/js/paciente.js?v=1.1"></script>
+  </div>
+
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+
+    <!-- CDN para bibliotecas externas -->
+  <script src="https://cloudflare.com"></script>
+  <script src="https://cloudflare.com"></script>
+  <script src="https://cloudflare.com"></script>
+
+  <script src="../public/js/config.js"></script>
+  <script src="../public/js/paciente.js?v=1.2"></script>
 </body>
 
 </html>

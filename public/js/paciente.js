@@ -439,6 +439,64 @@ document.addEventListener("DOMContentLoaded", async function () {
 
 
 
+// async function cargarPaciente() {
+//     try {
+//         const token = localStorage.getItem("token_seguridad");
+//         const id = localStorage.getItem("usuario_id");
+//         if (!token || !id) {
+//             console.error("No se encontró el token o el ID del usuario en el almacenamiento local.");
+//             return;
+//         }
+
+//         const respuesta = await fetch(`${API_URL}Paciente/MisDatos/${id}`, {
+//             method: "GET",
+//             headers: {
+//                 "Authorization": "Bearer " + token.trim(),
+//                 "Content-Type": "application/json"
+//             }
+//         });
+
+//         if (respuesta.ok) {
+//             datospaciente = await respuesta.json();
+//             console.log("Datos recibidos del servidor:", datospaciente);
+
+//             const paci = datospaciente.Persona || datospaciente.persona;
+//             const correo = datospaciente.Correo || datospaciente.correo;
+//             const tipoSangreObjeto = datospaciente.TipoSangre || datospaciente.tipoSangre;
+
+//             const hoy = new Date();
+//             const fechin = new Date(datospaciente.fechaNacimiento.fechaDeNacimiento);
+//             let edad = hoy.getFullYear() - fechin.getFullYear();
+//             const diferenciaMeses = hoy.getMonth() - fechin.getMonth();
+//             if (diferenciaMeses < 0 || (diferenciaMeses === 0 && hoy.getDate() < fechin.getDate())) {
+//                 edad--;
+//             }
+
+//             const tipoSangreTexto = tipoSangreObjeto ? (tipoSangreObjeto.tipoDeSangre || tipoSangreObjeto.TipoDeSangre || "No registrado") : "No registrado";
+//             const nombrepacientecompleto = paci ? `${paci.Nombre || paci.nombre || ''} ${paci.Paterno || paci.paterno || ''} ${paci.Materno || paci.materno || ''}`.trim() : 'Paciente sin nombre';
+//             const correoTexto = correo ? (correo.CorreoElectronico || correo.correoElectronico || 'Sin correo') : 'Sin correo';
+//             const departamento = datospaciente.departamento.departamento1;
+//             const ciudad = datospaciente.ciudad.nombre;
+
+//             const infoDiv = document.getElementById("infoPaciente");
+//             if (infoDiv) {
+//                 infoDiv.innerHTML = `
+//                     <p><strong>Nombre:</strong> ${nombrepacientecompleto}</p>
+//                     <p><strong>Correo:</strong> ${correoTexto}</p>
+//                     <p><strong>Edad:</strong> ${edad}</p>
+//                     <p><strong>Departamento:</strong> ${departamento}</p>
+//                     <p><strong>Ciudad:</strong> ${ciudad}</p>
+//                     <p><strong>Tipo de Sangre:</strong> ${tipoSangreTexto}</p>
+//                     <div id="estadoPaciente" class="estado">Evaluando historial con Walle-HB...</div>
+//                 `;
+//             }
+//         }
+//     }
+//     catch (error) {
+//         console.error("Error en la petición fetch de datos personales:", error);
+//     }
+// }
+
 async function cargarPaciente() {
     try {
         const token = localStorage.getItem("token_seguridad");
@@ -478,27 +536,89 @@ async function cargarPaciente() {
             const departamento = datospaciente.departamento.departamento1;
             const ciudad = datospaciente.ciudad.nombre;
 
-            const infoDiv = document.getElementById("infoPaciente");
-            if (infoDiv) {
-                infoDiv.innerHTML = `
-                    <p><strong>Nombre:</strong> ${nombrepacientecompleto}</p>
-                    <p><strong>Correo:</strong> ${correoTexto}</p>
-                    <p><strong>Edad:</strong> ${edad}</p>
-                    <p><strong>Departamento:</strong> ${departamento}</p>
-                    <p><strong>Ciudad:</strong> ${ciudad}</p>
-                    <p><strong>Tipo de Sangre:</strong> ${tipoSangreTexto}</p>
-                    <div id="estadoPaciente" class="estado">Evaluando historial con Walle-HB...</div>
-                `;
-            }
+            // Rellenamos los campos de texto individuales manteniendo intacta la estructura HTML fija
+            const elNombre = document.getElementById("nombrePacienteDisplay");
+            const elCorreo = document.getElementById("correoPacienteDisplay");
+            const elEdad = document.getElementById("edadDisplay");
+            const elDepto = document.getElementById("deptoDisplay");
+            const elCiudad = document.getElementById("ciudadDisplay");
+            const elSangre = document.getElementById("sangreDisplay");
+
+            if (elNombre) elNombre.textContent = nombrepacientecompleto;
+            if (elCorreo) elCorreo.textContent = correoTexto;
+            if (elEdad) elEdad.textContent = edad;
+            if (elDepto) elDepto.textContent = departamento;
+            if (elCiudad) elCiudad.textContent = ciudad;
+            if (elSangre) elSangre.textContent = tipoSangreTexto;
         }
     }
     catch (error) {
         console.error("Error en la petición fetch de datos personales:", error);
     }
-
 }
 
-async function actualizarEstadoClinico() {
+// async function actualizarEstadoClinico() {
+//     const estadoDiv = document.getElementById("estadoPaciente");
+//     if (!estadoDiv) return;
+
+//     const token = localStorage.getItem("token_seguridad");
+//     const id = localStorage.getItem("usuario_id");
+
+//     try {
+//         const respuesta = await fetch(`${API_URL}RangoHemoglobina/mirango/${id}`, {
+//             method: 'GET',
+//             headers: {
+//                 'Authorization': `Bearer ${token.trim()}`,
+//                 'Content-Type': 'application/json'
+//             }
+//         });
+
+//         if (!respuesta.ok) throw new Error("Error al obtener el historial clínico del paciente.");
+
+//         const datos = await respuesta.json();
+
+//         if (!datos || datos.length === 0) {
+//             estadoDiv.textContent = "Estado: Sin análisis registrados";
+//             estadoDiv.className = "estado sin-datos";
+//             return;
+//         }
+
+
+//         const ultimoDato = datos[datos.length - 1];
+
+
+//         const referencia = ultimoDato.rangoReferencia;
+
+//         if (!referencia) {
+//             console.error("El registro no cuenta con un objeto de rangoReferencia válido.");
+//             return;
+//         }
+
+//         const min = referencia.valorMinimo;
+//         const max = referencia.valorMaximo;
+//         const hemoglobinaActual = ultimoDato.valorHemoglobina;
+
+//         const temperaturaActual = ultimoDato.temperatura;
+
+//         console.log(`Evaluando Límites: ${min} - ${max}. Medición: ${hemoglobinaActual} g/dL, TEMPERATURA: ${temperaturaActual}°C`);
+
+//         if (hemoglobinaActual < 14.8) {
+//             estadoDiv.textContent = `Estado: Alerta de Anemia (${hemoglobinaActual} g/dL)  TEMPERATURA: ${temperaturaActual} °C`;
+//             estadoDiv.className = "estado anemia";
+//         } else if (hemoglobinaActual > 18.8) {
+//             estadoDiv.textContent = `Estado: Alerta de Poliglobulia / Policitemia (${hemoglobinaActual} g/dL)  TEMPERATURA: ${temperaturaActual} °C`;
+//             estadoDiv.className = "estado poliglobulia";
+//         } else {
+//             estadoDiv.textContent = `Estado: Fisiológicamente Estable (${hemoglobinaActual} g/dL)  TEMPERATURA: ${temperaturaActual} °C`;
+//             estadoDiv.className = "estado estable";
+//         }
+//     } catch (error) {
+//         console.error("Error en el flujo de rangos:", error);
+//         estadoDiv.textContent = "Estado: Error al sincronizar";
+//     }
+// }
+
+async function actualizarEstadoClinico(hemoglobinaParam) {
     const estadoDiv = document.getElementById("estadoPaciente");
     if (!estadoDiv) return;
 
@@ -519,43 +639,48 @@ async function actualizarEstadoClinico() {
         const datos = await respuesta.json();
 
         if (!datos || datos.length === 0) {
-            estadoDiv.textContent = "Estado: Sin análisis registrados";
             estadoDiv.className = "estado sin-datos";
+            estadoDiv.innerHTML = `
+                <div class="estado-icon-wrapper">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="8" x2="12" y2="12"></line><line x1="12" y1="16" x2="12.01" y2="16"></line></svg>
+                </div>
+                <div class="estado-text-content">
+                    <span class="estado-title-label">ESTADO</span>
+                    <strong>SIN ANÁLISIS REGISTRADOS</strong>
+                </div>
+            `;
             return;
         }
-
 
         const ultimoDato = datos[datos.length - 1];
-
-
-        const referencia = ultimoDato.rangoReferencia;
-
-        if (!referencia) {
-            console.error("El registro no cuenta con un objeto de rangoReferencia válido.");
-            return;
-        }
-
-        const min = referencia.valorMinimo;
-        const max = referencia.valorMaximo;
         const hemoglobinaActual = ultimoDato.valorHemoglobina;
-
         const temperaturaActual = ultimoDato.temperatura;
 
-        console.log(`Evaluando Límites: ${min} - ${max}. Medición: ${hemoglobinaActual} g/dL, TEMPERATURA: ${temperaturaActual}°C`);
+        let claseEstado = "estable";
+        let textoEstado = "FISIOLÓGICAMENTE ESTABLE";
 
         if (hemoglobinaActual < 14.8) {
-            estadoDiv.textContent = `Estado: Alerta de Anemia (${hemoglobinaActual} g/dL)  TEMPERATURA: ${temperaturaActual} °C`;
-            estadoDiv.className = "estado anemia";
+            claseEstado = "anemia";
+            textoEstado = "ALERTA DE ANEMIA";
         } else if (hemoglobinaActual > 18.8) {
-            estadoDiv.textContent = `Estado: Alerta de Poliglobulia / Policitemia (${hemoglobinaActual} g/dL)  TEMPERATURA: ${temperaturaActual} °C`;
-            estadoDiv.className = "estado poliglobulia";
-        } else {
-            estadoDiv.textContent = `Estado: Fisiológicamente Estable (${hemoglobinaActual} g/dL)  TEMPERATURA: ${temperaturaActual} °C`;
-            estadoDiv.className = "estado estable";
+            claseEstado = "poliglobulia";
+            textoEstado = "ALERTA DE POLIGLOBULIA";
         }
+
+        // Asignamos el diseño exacto con iconos y marcos de colores dinámicos sin romper la estructura
+        estadoDiv.className = `estado ${claseEstado}`;
+        estadoDiv.innerHTML = `
+            <div class="estado-icon-wrapper">
+                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg>
+            </div>
+            <div class="estado-text-content">
+                <span class="estado-title-label">ESTADO</span>
+                <strong>${textoEstado}</strong>
+                <span class="estado-detalle-medicion">(${hemoglobinaActual} G/DL) TEMPERATURA: ${temperaturaActual} °C</span>
+            </div>
+        `;
     } catch (error) {
         console.error("Error en el flujo de rangos:", error);
-        estadoDiv.textContent = "Estado: Error al sincronizar";
     }
 }
 
