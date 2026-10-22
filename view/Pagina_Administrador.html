@@ -9,11 +9,22 @@
 </head>
 <body>
 
-    <!-- NAV BARRA SUPERIOR -->
+<!-- NAV BARRA SUPERIOR -->
     <nav>
         <div class="logo">Sistema <span>HB</span></div>
-        <a href="estadisticas.html" id="btnEstadistica" target="_blank" rel="noopener noreferrer" class="btn-estadis">Ver más estadisticas</a>
-        <button id="btnCerrarSesion" class="btn-logout">Cerrar Sesión</button>
+
+        <!-- BOTÓN HAMBURGUESA (Visible solo en dispositivos móviles) -->
+        <button class="nav-toggle" id="navToggle" aria-label="Abrir menú">
+            <span></span>
+            <span></span>
+            <span></span>
+        </button>
+
+        <!-- CONTENEDOR DE ACCIONES -->
+        <div class="nav-links" id="navLinks">
+            <a href="estadisticas.html" id="btnEstadistica" target="_blank" rel="noopener noreferrer" class="btn-estadis">Ver más estadisticas</a>
+            <button id="btnCerrarSesion" class="btn-logout">Cerrar Sesión</button>
+        </div>
     </nav>
 
     <main>
@@ -159,6 +170,7 @@
 
     <!-- VÍNCULO CON SCRIPTS LOGICOS -->
     <script src="../public/js/config.js"></script>
+    <script src="../public/js/components.js"></script>
     <script src="../public/js/administrador.js"></script>
 </body>
 </html>
