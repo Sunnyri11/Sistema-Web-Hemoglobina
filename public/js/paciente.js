@@ -7,9 +7,11 @@
 // ----------------------------------------------------------------------------
 // Constantes y estado
 // ----------------------------------------------------------------------------
-const RANGO_HB_DEFECTO = { min: 14.8, max: 18.8 };
+const RANGO_HB_DEFECTO = { min: 14.8, max: 19.8 };   // adulto en altura, hasta que llegue el rango real
 const POLLING_MS = 2000;
 const TIMEOUT_SENSOR_MS = 60000;
+const REINTENTO_IA_MS = 12000;   // Render gratis tarda en despertar: se reintenta solo
+const MAX_REINTENTOS_IA = 5;
 
 const estado = {
     historialCompleto: [],     // Paciente/mihistorial
@@ -18,6 +20,10 @@ const estado = {
     filtro: "todos",
     rango: { ...RANGO_HB_DEFECTO },
     medicion: null,            // medición temporal del sensor (antes de guardar)
+    prediccion: null,          // predicciones de Walle-HB (analisisIA.prediccion)
+    proyeccion: null,          // punto proyectado que se dibuja en el gráfico
+    reintentoIA: null,
+    reintentosIA: 0,
     sensor: { intervalo: null, timeout: null }
 };
 
@@ -47,6 +53,18 @@ function escapeHtml(valor) {
     }[c]));
 }
 
+// Lee un campo sin importar si el backend lo manda en camelCase o PascalCase
+function campo(obj, nombre) {
+    if (!obj) return undefined;
+    return obj[nombre] ?? obj[nombre.charAt(0).toUpperCase() + nombre.slice(1)];
+}
+
+function aNumero(v) {
+    if (v === null || v === undefined || v === "") return null;
+    const n = Number(v);
+    return Number.isFinite(n) ? n : null;
+}
+
 // fetch con token y JSON por defecto
 function apiFetch(ruta, opciones = {}) {
     const { headers, ...resto } = opciones;
@@ -64,6 +82,13 @@ function apiFetch(ruta, opciones = {}) {
 const leerFecha = (r) => r.fecha || r.Fecha || r.fechaAnalisis || r.FechaAnalisis || null;
 const leerHemo = (r) => parseFloat(r.valorHemoglobina ?? r.ValorHemoglobina ?? 0) || 0;
 const leerTemp = (r) => parseFloat(r.temperatura ?? r.Temperatura ?? 0) || 0;
+
+// Rango de referencia propio de cada análisis (el backend lo envía como valorMin/valorMax)
+function leerRango(r) {
+    const min = aNumero(r.valorMin ?? r.ValorMin);
+    const max = aNumero(r.valorMax ?? r.ValorMax);
+    return min !== null && max !== null ? { min, max } : null;
+}
 
 // Parseo seguro de fechas "YYYY-MM-DD" (evita desfase de zona horaria)
 function parseFecha(valor) {
@@ -95,9 +120,9 @@ function registroMasReciente(lista) {
     });
 }
 
-function clasificarHemoglobina(valor) {
-    if (valor < estado.rango.min) return { clase: "anemia", texto: "ALERTA DE ANEMIA", pdf: "Alerta de Anemia" };
-    if (valor > estado.rango.max) return { clase: "poliglobulia", texto: "ALERTA DE POLIGLOBULIA", pdf: "Alerta de Poliglobulia" };
+function clasificarHemoglobina(valor, rango = estado.rango) {
+    if (valor < rango.min) return { clase: "anemia", texto: "ALERTA DE ANEMIA", pdf: "Alerta de Anemia" };
+    if (valor > rango.max) return { clase: "poliglobulia", texto: "ALERTA DE POLIGLOBULIA", pdf: "Alerta de Poliglobulia" };
     return { clase: "estable", texto: "FISIOLÓGICAMENTE ESTABLE", pdf: "Normal (Estable)" };
 }
 
@@ -105,24 +130,44 @@ function clasificarHemoglobina(valor) {
 // Gráfico de línea simple en canvas (sin librerías)
 // ----------------------------------------------------------------------------
 class MiniChartSingleLine {
-    constructor(canvasId, minVal, maxVal, color, esTemp) {
+    // autoEscala: el eje Y se ajusta a los datos (escalones enteros) para que
+    // los valores altos de la altura (hasta ~21 g/dL) no queden recortados.
+    constructor(canvasId, minVal, maxVal, color, esTemp, autoEscala = false) {
         this.canvas = $(canvasId);
         this.ctx = this.canvas ? this.canvas.getContext("2d") : null;
         this.min = minVal;
         this.max = maxVal;
         this.color = color;
         this.esTemp = esTemp;
+        this.autoEscala = autoEscala;
         this.ultimo = null; // últimos datos, para redibujar al cambiar el tamaño
     }
 
     redibujar() {
-        if (this.ultimo) this.render(this.ultimo[0], this.ultimo[1]);
+        if (this.ultimo) this.render(...this.ultimo);
     }
 
-    render(etiquetas, datos) {
-        this.ultimo = [etiquetas, datos];
+    // opciones.banda      = { min, max }            -> franja del rango normal
+    // opciones.proyeccion = { valor, etiqueta, color } -> punto proyectado por Walle-HB
+    render(etiquetas, datos, opciones = {}) {
+        this.ultimo = [etiquetas, datos, opciones];
         const { canvas, ctx } = this;
         if (!canvas || !ctx) return;
+        const banda = opciones.banda || null;
+        const proy = opciones.proyeccion || null;
+
+        let min = this.min, max = this.max;
+        if (this.autoEscala) {
+            const vals = [...datos];
+            if (banda) vals.push(banda.min, banda.max);
+            if (proy) vals.push(proy.valor);
+            if (vals.length) {
+                min = Math.floor(Math.min(...vals) - 1);
+                const tope = Math.ceil(Math.max(...vals) + 1);
+                max = min + Math.max(8, Math.ceil((tope - min) / 4) * 4);
+            }
+        }
+        const rango = max - min;
 
         const dpr = window.devicePixelRatio || 1;
         const alto = 240;
@@ -136,14 +181,14 @@ class MiniChartSingleLine {
         ctx.textAlign = "left";
 
         const izq = 50, arriba = 30, anchoUtil = ancho - 90, altoUtil = 150;
-        const rango = this.max - this.min;
+        const yDe = (v) => arriba + altoUtil - ((Math.min(Math.max(v, min), max) - min) / rango) * altoUtil;
 
         // Rejilla y escala del eje Y
         ctx.strokeStyle = "#f1f5f9";
         ctx.lineWidth = 1;
         ctx.font = "11px sans-serif";
         for (let l = 0; l <= 4; l++) {
-            const valor = this.min + (rango / 4) * l;
+            const valor = min + (rango / 4) * l;
             const y = arriba + altoUtil - (l / 4) * altoUtil;
             ctx.beginPath();
             ctx.moveTo(izq, y);
@@ -162,15 +207,19 @@ class MiniChartSingleLine {
             return;
         }
 
-        const n = datos.length;
-        const puntos = datos.map((val, idx) => {
-            const enRango = Math.min(Math.max(val, this.min), this.max);
-            return {
-                x: izq + (n > 1 ? (idx / (n - 1)) * anchoUtil : anchoUtil / 2),
-                y: arriba + altoUtil - ((enRango - this.min) / rango) * altoUtil,
-                v: val
-            };
-        });
+        // Franja del rango normal del paciente
+        if (banda) {
+            const y1 = yDe(banda.max), y2 = yDe(banda.min);
+            ctx.fillStyle = "rgba(34, 197, 94, 0.10)";
+            ctx.fillRect(izq, y1, anchoUtil, y2 - y1);
+            ctx.fillStyle = "rgba(21, 128, 61, 0.85)";
+            ctx.font = "10px sans-serif";
+            ctx.fillText(`Rango normal ${banda.min.toFixed(1)}–${banda.max.toFixed(1)}`, izq + 6, y1 + 12);
+        }
+
+        const total = datos.length + (proy ? 1 : 0);
+        const xDe = (idx) => izq + (total > 1 ? (idx / (total - 1)) * anchoUtil : anchoUtil / 2);
+        const puntos = datos.map((val, idx) => ({ x: xDe(idx), y: yDe(val), v: val }));
 
         // Línea
         ctx.beginPath();
@@ -180,31 +229,51 @@ class MiniChartSingleLine {
         puntos.forEach((p, i) => (i === 0 ? ctx.moveTo(p.x, p.y) : ctx.lineTo(p.x, p.y)));
         ctx.stroke();
 
+        // Tramo proyectado (discontinuo)
+        let puntoProy = null;
+        if (proy) {
+            puntoProy = { x: xDe(total - 1), y: yDe(proy.valor), v: proy.valor };
+            const ult = puntos[puntos.length - 1];
+            ctx.save();
+            ctx.setLineDash([6, 5]);
+            ctx.beginPath();
+            ctx.strokeStyle = proy.color || this.color;
+            ctx.lineWidth = 2.5;
+            ctx.moveTo(ult.x, ult.y);
+            ctx.lineTo(puntoProy.x, puntoProy.y);
+            ctx.stroke();
+            ctx.restore();
+        }
+
         // Nodos y valores
-        puntos.forEach((p) => {
+        const nodo = (p, color, texto) => {
             ctx.beginPath();
             ctx.fillStyle = "#ffffff";
             ctx.arc(p.x, p.y, 4, 0, 2 * Math.PI);
             ctx.fill();
-            ctx.strokeStyle = this.color;
+            ctx.strokeStyle = color;
             ctx.lineWidth = 2;
             ctx.stroke();
-
             ctx.fillStyle = "#1e293b";
             ctx.font = "bold 10px sans-serif";
-            ctx.fillText(p.v.toFixed(1) + (this.esTemp ? "°" : ""), p.x - 10, p.y - 10);
-        });
+            ctx.fillText(texto, p.x - 10, p.y - 10);
+        };
+        puntos.forEach((p) => nodo(p, this.color, p.v.toFixed(1) + (this.esTemp ? "°" : "")));
+        if (puntoProy) nodo(puntoProy, proy.color || this.color, "≈" + puntoProy.v.toFixed(1));
 
-        // Eje X (se omiten rótulos si hay demasiados para evitar solapamiento)
+        // Eje X (se omiten rótulos si hay demasiados; el de la proyección siempre se muestra)
+        const rotulos = proy ? [...etiquetas, proy.etiqueta || "Proy."] : etiquetas;
         const maxEtiquetas = Math.max(1, Math.floor(anchoUtil / 45));
-        const paso = Math.ceil(n / maxEtiquetas);
+        const paso = Math.ceil(total / maxEtiquetas);
         ctx.fillStyle = "#64748b";
         ctx.font = "10px sans-serif";
-        etiquetas.forEach((texto, idx) => {
-            if (idx % paso !== 0) return;
-            const p = puntos[idx];
+        rotulos.forEach((texto, idx) => {
+            const esProy = proy && idx === total - 1;
+            const visible = esProy || (idx % paso === 0 && !(proy && idx === total - 2));
+            if (!visible) return;
+            const x = xDe(idx);
             ctx.save();
-            ctx.translate(p.x, alto - 15);
+            ctx.translate(x, alto - 15);
             ctx.rotate(-0.15);
             ctx.fillText(texto, -20, 10);
             ctx.restore();
@@ -214,12 +283,15 @@ class MiniChartSingleLine {
 
 function inicializarGrafico(etiquetas, valoresHemo, valoresTemp) {
     if (!graficoHemoInstancia) {
-        graficoHemoInstancia = new MiniChartSingleLine("graficoHemoglobina", 8, 18, "#818cf8", false);
+        graficoHemoInstancia = new MiniChartSingleLine("graficoHemoglobina", 8, 24, "#818cf8", false, true);
     }
     if (!graficoTempInstancia) {
         graficoTempInstancia = new MiniChartSingleLine("graficoTemperatura", 35, 41, "#f97316", true);
     }
-    graficoHemoInstancia.render(etiquetas, valoresHemo);
+    const hayDatos = valoresHemo.length > 0;
+    graficoHemoInstancia.render(etiquetas, valoresHemo, hayDatos
+        ? { banda: { ...estado.rango }, proyeccion: estado.proyeccion }
+        : {});
     graficoTempInstancia.render(etiquetas, valoresTemp);
 }
 
@@ -407,9 +479,7 @@ async function actualizarEstadoClinico() {
             pintarSinAnalisis();
             return;
         }
-        console.log(datos);
-        const ultimo = datos[datos.length - 1];
-        console.log(ultimo);
+        const ultimo = registroMasReciente(datos);
         const ref = ultimo.rangoReferencia;
         if (ref && ref.valorMinimo != null && ref.valorMaximo != null) {
             estado.rango = { min: ref.valorMinimo, max: ref.valorMaximo };
@@ -426,38 +496,189 @@ async function actualizarEstadoClinico() {
 // ----------------------------------------------------------------------------
 // Módulo analítico Walle-HB
 // ----------------------------------------------------------------------------
-function renderAnalisisIA(iaNode, ultimo) {
-    const hemo = leerHemo(ultimo);
-    console.log(hemo);
-    const temp = ultimo.temperatura ?? ultimo.Temperatura ?? "S/D";
+const COLOR_ESTADO = { anemia: "#c0392b", poliglobulia: "#d35400", estable: "#27ae60" };
 
-    const estadoIA = Array.isArray(iaNode.estado) ? iaNode.estado[0] : iaNode.estado;
-    console.log(estadoIA);
-    if (estadoIA) {
-        const clave = String(estadoIA).toLowerCase();
-        const clase = clave === "anemia" ? "anemia" : clave === "poliglobulia" ? "poliglobulia" : "estable";
+const ESTILOS_WALLE = `
+.walle-pred { margin: 14px 0 6px; padding: 14px; border: 1px solid #e2e8f0; border-radius: 12px; background: #f8fafc; text-align: left; }
+.walle-pred h5 { margin: 0 0 10px; font-size: 13px; font-weight: 700; color: var(--text-main, #0f172a); }
+.walle-pred-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap: 10px; }
+.walle-pred-item { background: #fff; border: 1px solid #e2e8f0; border-radius: 10px; padding: 10px; }
+.walle-pred-item small { display: block; color: #64748b; font-size: 11px; margin-bottom: 2px; }
+.walle-pred-item strong { font-size: 16px; color: var(--text-main, #0f172a); }
+.walle-pred-item > span { display: block; font-size: 11px; color: #64748b; margin-top: 3px; }
+.walle-chip { display: inline-block; padding: 2px 8px; border-radius: 999px; font-size: 11px; font-weight: 700; line-height: 1.4; color: #fff; }
+.walle-chip.bajo, .walle-chip.estable { background: #27ae60; }
+.walle-chip.medio { background: #e69a00; }
+.walle-chip.alto, .walle-chip.anemia { background: #c0392b; }
+.walle-chip.poliglobulia { background: #d35400; }
+.walle-pred-nota { margin: 10px 0 0; font-size: 11px; color: #64748b; }
+.walle-cargando { color: #64748b; font-style: italic; }`;
+
+function asegurarEstilosWalle() {
+    if ($("estilosWalleHB")) return;
+    const st = document.createElement("style");
+    st.id = "estilosWalleHB";
+    st.textContent = ESTILOS_WALLE;
+    document.head.appendChild(st);
+}
+
+const claseEstado = (txt) => {
+    const c = String(txt || "").toLowerCase();
+    return c.includes("anemia") ? "anemia" : c.includes("poliglobulia") ? "poliglobulia" : "estable";
+};
+
+function normalizarPrediccion(raw) {
+    if (!raw || typeof raw !== "object") return null;
+    const p = {
+        valorActual: aNumero(campo(raw, "valorActual")),
+        valorProyectado: aNumero(campo(raw, "valorProyectado")),
+        horizonteDias: aNumero(campo(raw, "horizonteDias")),
+        estadoProyectado: campo(raw, "estadoProyectado") || "",
+        tendencia: campo(raw, "tendencia") || "sin_datos",
+        cambioEsperado: aNumero(campo(raw, "cambioEsperado")),
+        riesgo: campo(raw, "riesgo") || "",
+        gravedad: campo(raw, "gravedad") || "ninguna",
+        margenAlLimite: aNumero(campo(raw, "margenAlLimite")),
+        diasHastaSalirRango: aNumero(campo(raw, "diasHastaSalirRango")),
+        diasHastaNormalizar: aNumero(campo(raw, "diasHastaNormalizar")),
+        proximoControlDias: aNumero(campo(raw, "proximoControlDias")),
+        confianza: campo(raw, "confianza") || "baja",
+        puntosUsados: aNumero(campo(raw, "puntosUsados")) ?? 0
+    };
+    return p.valorProyectado === null && !p.riesgo ? null : p;
+}
+
+const chipHtml = (texto, clase) => `<span class="walle-chip ${escapeHtml(clase)}">${escapeHtml(texto)}</span>`;
+const itemHtml = (titulo, valor, sub) =>
+    `<div class="walle-pred-item"><small>${escapeHtml(titulo)}</small><strong>${valor}</strong>${sub ? `<span>${sub}</span>` : ""}</div>`;
+
+const TENDENCIAS = {
+    ascendente: ["↗", "Ascendente"], descendente: ["↘", "Descendente"],
+    estable: ["→", "Estable"], sin_datos: ["•", "Sin datos"]
+};
+
+function renderPrediccionIA(pred) {
+    asegurarEstilosWalle();
+    estado.prediccion = pred;
+    const proyecta = !!pred && pred.tendencia !== "sin_datos" && pred.valorProyectado !== null;
+    estado.proyeccion = proyecta
+        ? { valor: pred.valorProyectado, etiqueta: "Proy.", color: COLOR_ESTADO[claseEstado(pred.estadoProyectado)] }
+        : null;
+
+    let panel = $("panelPrediccionWalleHB");
+    if (!pred) { panel?.remove(); return; }
+
+    const contenedor = $("alertasWalleHB");
+    if (!contenedor) return;
+    if (!panel) {
+        panel = document.createElement("div");
+        panel.id = "panelPrediccionWalleHB";
+        panel.className = "walle-pred";
+        const ref = $("textoAlertaWalleHB");
+        if (ref) ref.after(panel); else contenedor.appendChild(panel);
     }
 
-    // Alertas
-    const alertaDiv = $("textoAlertaWalleHB");
-    if (alertaDiv && iaNode.alertas) {
-        const mensaje = Array.isArray(iaNode.alertas) ? (iaNode.alertas[0] || "") : String(iaNode.alertas);
-        if (mensaje.length > 0) {
-            alertaDiv.innerHTML = `<strong>Obtenido del historial de mediciones:</strong><br><br>${escapeHtml(mensaje).replace(/\n/g, "<br>")}`;
-            mostrar("alertasWalleHB", "block");
+    const [flecha, textoTend] = TENDENCIAS[pred.tendencia] || TENDENCIAS.sin_datos;
+    const cambio = pred.cambioEsperado;
+    const margen = pred.margenAlLimite;
+    const riesgoClase = String(pred.riesgo).toLowerCase();
+    const items = [];
+
+    items.push(itemHtml("Hb proyectada",
+        proyecta ? `${pred.valorProyectado.toFixed(1)} g/dL` : "—",
+        proyecta ? `${chipHtml(pred.estadoProyectado, claseEstado(pred.estadoProyectado))} en ~${pred.horizonteDias ?? 30} días`
+                 : "Faltan datos para proyectar"));
+    items.push(itemHtml("Riesgo", pred.riesgo ? chipHtml(pred.riesgo, riesgoClase) : "—",
+        pred.gravedad && pred.gravedad !== "ninguna" ? `Gravedad ${escapeHtml(pred.gravedad)}`
+            : (margen !== null && margen >= 0 ? `A ${margen.toFixed(1)} g/dL del límite` : "")));
+    items.push(itemHtml("Tendencia", `${flecha} ${textoTend}`,
+        proyecta && cambio !== null ? `${cambio > 0 ? "+" : ""}${cambio.toFixed(1)} g/dL esperados` : ""));
+    items.push(itemHtml("Confianza", escapeHtml(pred.confianza.charAt(0).toUpperCase() + pred.confianza.slice(1)),
+        `${pred.puntosUsados} análisis`));
+    if (pred.proximoControlDias !== null) {
+        items.push(itemHtml("Próximo control", `~${pred.proximoControlDias} días`, "sugerido"));
+    }
+    if (pred.diasHastaSalirRango !== null) {
+        items.push(itemHtml("Podría salir del rango", `~${pred.diasHastaSalirRango} días`, "si la tendencia continúa"));
+    }
+    if (pred.diasHastaNormalizar !== null) {
+        items.push(itemHtml("Volvería al rango", `~${pred.diasHastaNormalizar} días`, "si la tendencia continúa"));
+    }
+
+    panel.innerHTML = `
+        <h5>🔮 Proyección de Walle-HB</h5>
+        <div class="walle-pred-grid">${items.join("")}</div>
+        <p class="walle-pred-nota">Estimación estadística orientativa${pred.confianza === "baja" ? " (confianza baja: registra más controles para afinarla)" : ""}; no reemplaza la valoración médica.</p>`;
+}
+
+function mostrarCargaIA() {
+    asegurarEstilosWalle();
+    const alerta = $("textoAlertaWalleHB");
+    if (!alerta) return;
+    alerta.innerHTML = '<span class="walle-cargando">⏳ Walle-HB está analizando tu historial…</span>';
+    mostrar("alertasWalleHB", "block");
+}
+
+function ocultarPanelIA() {
+    $("panelPrediccionWalleHB")?.remove();
+    estado.prediccion = null;
+    estado.proyeccion = null;
+    mostrar("alertasWalleHB", "none");
+}
+
+// Si Render estaba dormido, C# responde "Procesando...": se vuelve a consultar solo
+function programarReintentoIA() {
+    if (estado.reintentosIA >= MAX_REINTENTOS_IA) return;
+    estado.reintentosIA++;
+    clearTimeout(estado.reintentoIA);
+    estado.reintentoIA = setTimeout(async () => {
+        try {
+            const res = await apiFetch("Dashboard/paciente");
+            if (!res.ok) return;
+            const datos = await res.json();
+            const nodo = datos.analisisIA || datos.analisisia;
+            if (nodo) renderAnalisisIA(nodo);
+        } catch (error) {
+            console.error("Reintento de Walle-HB fallido:", error);
         }
+    }, REINTENTO_IA_MS);
+}
+
+function renderAnalisisIA(iaNode) {
+    const estadoIA = String((Array.isArray(iaNode.estado) ? iaNode.estado[0] : iaNode.estado) ?? "");
+    const procesando = /^procesando/i.test(estadoIA);
+    const conError = /^error/i.test(estadoIA);
+
+    // Alerta principal
+    const bruto = iaNode.alertas;
+    const mensaje = Array.isArray(bruto) ? (bruto[0] || "") : String(bruto ?? "");
+    const alertaDiv = $("textoAlertaWalleHB");
+    if (alertaDiv) {
+        const cuerpo = escapeHtml(mensaje).replace(/\n/g, "<br>");
+        alertaDiv.innerHTML = !mensaje ? ""
+            : (procesando || conError) ? cuerpo
+            : `<strong>Obtenido del historial de mediciones:</strong><br><br>${cuerpo}`;
     }
 
     // Recomendaciones
     const lista = $("listaRecomendacionesWalleHB");
-    if (lista && Array.isArray(iaNode.recomendaciones)) {
-        lista.replaceChildren(...iaNode.recomendaciones.map((rec) => {
+    if (lista) {
+        const recs = Array.isArray(iaNode.recomendaciones) ? iaNode.recomendaciones : [];
+        lista.replaceChildren(...recs.map((rec) => {
             const li = document.createElement("li");
             li.textContent = rec;
             li.className = "item-recommendacion-ia";
             return li;
         }));
     }
+
+    // Predicciones (proyección, riesgo, confianza...)
+    renderPrediccionIA(procesando || conError ? null : normalizarPrediccion(campo(iaNode, "prediccion")));
+
+    mostrar("alertasWalleHB", mensaje || estado.prediccion ? "block" : "none");
+    procesarFiltroCronologico(estado.filtro);   // redibuja el gráfico con el punto proyectado
+
+    if (procesando) programarReintentoIA(); else estado.reintentosIA = 0;
 }
 
 // ----------------------------------------------------------------------------
@@ -465,41 +686,53 @@ function renderAnalisisIA(iaNode, ultimo) {
 // ----------------------------------------------------------------------------
 async function cargarDashboard() {
     const id = getUserId();
+    clearTimeout(estado.reintentoIA);
+    estado.reintentosIA = 0;
+    mostrarCargaIA();
 
-    const [, resDashboard, resHistorial] = await Promise.all([
-        cargarPaciente(),
-        apiFetch("Dashboard/paciente"),
-        apiFetch(`Paciente/mihistorial/${id}`)
-    ]);
+    try {
+        const [, resDashboard, resHistorial] = await Promise.all([
+            cargarPaciente(),
+            apiFetch("Dashboard/paciente"),
+            apiFetch(`Paciente/mihistorial/${id}`)
+        ]);
 
-    if (!resDashboard.ok) {
-        alert("Su sesión ha expirado o es inválida.");
-        cerrarSesion();
-        return;
+        if (resDashboard.status === 401 || resDashboard.status === 403) {
+            alert("Su sesión ha expirado o es inválida.");
+            cerrarSesion();
+            return;
+        }
+        if (!resDashboard.ok) throw new Error(`Dashboard/paciente respondió ${resDashboard.status}`);
+
+        if (resHistorial.ok) {
+            const h = await resHistorial.json();
+            estado.historialCompleto = h.historial || [];
+        }
+
+        const datos = await resDashboard.json();
+        estado.nombre = datos.nombreCompleto || "Paciente";
+        estado.historialDashboard = datos.historial || [];
+
+        if (estado.historialCompleto.length === 0) {
+            pintarSinAnalisis();
+            inicializarGrafico([], [], []);
+            ocultarPanelIA();
+            return;
+        }
+
+        procesarFiltroCronologico(estado.filtro);
+
+        // Estado base (y rango de referencia real), se redibuja el gráfico con ese rango
+        // y luego se pinta el dictamen de Walle-HB encima
+        await actualizarEstadoClinico();
+        procesarFiltroCronologico(estado.filtro);
+
+        const iaNode = datos.analisisIA || datos.analisisia;
+        if (iaNode) renderAnalisisIA(iaNode); else ocultarPanelIA();
+    } catch (error) {
+        ocultarPanelIA();
+        throw error;
     }
-
-    if (resHistorial.ok) {
-        const h = await resHistorial.json();
-        estado.historialCompleto = h.historial || [];
-    }
-
-    const datos = await resDashboard.json();
-    estado.nombre = datos.nombreCompleto || "Paciente";
-    estado.historialDashboard = datos.historial || [];
-
-    if (estado.historialCompleto.length === 0) {
-        pintarSinAnalisis();
-        inicializarGrafico([], [], []);
-        return;
-    }
-
-    procesarFiltroCronologico(estado.filtro);
-
-    // Estado base (y rango de referencia real) y luego el dictamen de la IA encima
-    await actualizarEstadoClinico();
-
-    const iaNode = datos.analisisIA || datos.analisisia;
-    if (iaNode) renderAnalisisIA(iaNode, registroMasReciente(estado.historialCompleto));
 }
 
 // ----------------------------------------------------------------------------
@@ -521,7 +754,7 @@ function descargarReportePDF() {
     const colores = { estable: "#27ae60", anemia: "#c0392b", poliglobulia: "#d35400" };
     const filas = ordenado.map((r, idx) => {
         const valor = leerHemo(r);
-        const { clase, pdf } = clasificarHemoglobina(valor);
+        const { clase, pdf } = clasificarHemoglobina(valor, leerRango(r) || estado.rango);
         const negrita = clase === "estable" ? "" : "font-weight: bold;";
         return `
             <tr>
@@ -531,6 +764,16 @@ function descargarReportePDF() {
                 <td style="padding: 10px; border-bottom: 1px solid #e2e8f0; text-align: center; color: ${colores[clase]}; ${negrita}">${pdf}</td>
             </tr>`;
     }).join("");
+
+    const p = estado.prediccion;
+    const bloqueWalle = p ? `
+            <div class="info-section" style="background-color: #ffffff;">
+                <p><strong>Análisis Walle-HB:</strong> riesgo ${escapeHtml(String(p.riesgo || "sin dato").toLowerCase())}, confianza ${escapeHtml(p.confianza)} (${p.puntosUsados} análisis).</p>
+                ${p.valorProyectado !== null && p.tendencia !== "sin_datos"
+                    ? `<p><strong>Proyección a ${p.horizonteDias ?? 30} días:</strong> ≈ ${p.valorProyectado.toFixed(1)} g/dL (${escapeHtml(p.estadoProyectado)})</p>` : ""}
+                ${p.proximoControlDias !== null ? `<p><strong>Próximo control sugerido:</strong> en unos ${p.proximoControlDias} días</p>` : ""}
+                <p style="font-size: 11px; color: #64748b;">Estimación estadística orientativa; no reemplaza la valoración médica.</p>
+            </div>` : "";
 
     const ventana = window.open("", "_blank");
     if (!ventana) {
@@ -565,6 +808,7 @@ function descargarReportePDF() {
                 <p><strong>Fecha de Emisión:</strong> ${new Date().toLocaleDateString()}</p>
                 <p><strong>Total de Análisis Procesados:</strong> ${historial.length}</p>
             </div>
+            ${bloqueWalle}
             <div class="tabla-contenedor">
                 <table>
                     <thead>
@@ -757,7 +1001,6 @@ async function ejecutarGuardadoDefinitivo() {
                 cerrarModalAnalisis();
                 cargarDashboard().catch((e) => console.error("Error al refrescar el dashboard:", e)); // sin recargar la página
             }, 2000);
-            location.reload();
         } else {
             mostrar("iconoCarga", "none");
             alert("No se pudo completar el almacenamiento de la medición en la base de datos central.");
