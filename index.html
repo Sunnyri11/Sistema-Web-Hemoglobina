@@ -6,9 +6,11 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Sistema de Análisis - Ingreso y Registro</title>
   
+  <!-- Bootstrap 5 CSS -->
   <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.8/dist/css/bootstrap.min.css" rel="stylesheet"
     integrity="sha384-sRIl4kxILFvY47J16cr9ZwB07vP4J8+LH7qKQnuqkuIAvNWLzeN8tE5YBujZqJLB" crossorigin="anonymous">
   
+  <!-- Estilos personalizados -->
   <link rel="stylesheet" href="public/css/login.css">
   <!-- CSS de la Pantalla de Carga -->
   <link rel="stylesheet" href="public/css/loader.css">
@@ -19,47 +21,81 @@
 
 <body>
 
-  <div class="card">
-    <div class="header">
-      <h1>Sistema de Análisis</h1>
-      <p>Registro e Ingreso</p>
-    </div>
+  <div class="login-main-container">
+    <div class="row g-0 w-100 h-100 shadow-lg overflow-hidden login-card-wrapper">
+      
+      <!-- Columna Izquierda: Ilustración y Branding -->
+      <div class="col-lg-6 login-left-panel d-none d-lg-flex flex-column justify-content-between p-4">
+        <div class="brand-top d-flex align-items-center gap-3">
+          <img src="public/img/icon.png" alt="Logotipo" class="img-fluid logo-img" style="max-height: 50px;">
+          <div>
+            <h2 class="h5 text-white mb-0 fw-bold">Sistema de Análisis de Hemoglobina</h2>
+            <small class="text-white-50">Tecnología que cuida tu salud</small>
+          </div>
+        </div>
 
-    <form id="formSistema">
-      <!-- LOGIN -->
-      <div class="form-group">
-        <label>Correo Electrónico</label>
-        <input id="correo" type="email" required name="email" placeholder="ejemplo@correo.com">
-      </div>
-      <div class="form-group">
-        <label>Contraseña</label>
-        <input id="password" type="password" required name="password" placeholder="••••••••">
-      </div>
+        <div class="text-center my-auto">
+          <img src="public/img/Walle-HB.png" alt="Mascota del sistema" class="img-fluid mascot-img" style="max-height: 320px;">
+        </div>
 
-      <!-- REGISTRO -->
-      <div class="divider">
-        <div class="divider-title">Datos de Registro</div>
-        <div class="form-group">
-          <label>Rol en el Sistema</label>
-          <select id="rol" name="rol" required>
-            <option value="" disabled selected>Selecciona tu rol</option>
-            <option value="Paciente">Paciente</option>
-            <option value="Medico">Médico</option>
-            <option value="Administrador">Administrador</option>
-          </select>
+        <div class="footer-features text-white-50 small d-flex justify-content-around border-top border-light border-opacity-10 pt-3">
+          <span>✔ Diagnósticos rápidos</span>
+          <span>✔ Atención personal</span>
+          <span>✔ Historial de tus Diagnósticos</span>
         </div>
       </div>
 
-      <!-- BOTONES -->
-      <button type="submit" name="accion" value="login" class="btn-primary">
-        Iniciar Sesión
-      </button>
-    </form>
-    <hr>
-    <a href="view/Registro.html" class="btn btn-secondary">
-      Registrar nuevo paciente
-    </a>
-    <a href="forgetpassword.html" class="btn btn-link">Olvido de contraseña</a>
+      <!-- Columna Derecha: Formulario de Ingreso -->
+      <div class="col-lg-6 login-right-panel bg-white d-flex flex-column justify-content-center p-4 p-md-5">
+        
+        <div class="header text-start mb-4">
+          <h1 class="fw-bold text-dark">Bienvenido</h1>
+          <p class="text-muted">Ingresa a tu cuenta para continuar</p>
+        </div>
+
+        <form id="formSistema">
+          <!-- LOGIN -->
+          <div class="form-group mb-3">
+            <label class="form-label">Correo Electrónico</label>
+            <input id="correo" type="email" class="form-control" required name="email" placeholder="ejemplo@correo.com">
+          </div>
+          
+          <div class="form-group mb-3">
+            <label class="form-label">Contraseña</label>
+            <input id="password" type="password" class="form-control" required name="password" placeholder="••••••••">
+          </div>
+
+          <!-- REGISTRO -->
+          <div class="divider my-4">
+            <div class="divider-title text-uppercase fw-semibold mb-2">Datos de Registro</div>
+            <div class="form-group mb-3">
+              <label class="form-label">Rol en el Sistema</label>
+              <select id="rol" name="rol" class="form-select" required>
+                <option value="" disabled selected>Selecciona tu rol</option>
+                <option value="Paciente">Paciente</option>
+                <option value="Medico">Médico</option>
+                <option value="Administrador">Administrador</option>
+              </select>
+            </div>
+          </div>
+
+          <!-- BOTONES -->
+          <button type="submit" name="accion" value="login" class="btn btn-primary btn-custom-primary w-100 py-2 mb-3">
+            Iniciar Sesión
+          </button>
+        </form>
+
+        <div class="text-center mt-2">
+          <hr class="text-muted">
+          <a href="view/Registro.html" class="btn btn-outline-secondary btn-custom-secondary w-100 py-2 mb-2">
+            Registrar nuevo paciente
+          </a>
+          <a href="forgetpassword.html" class="text-decoration-none small text-primary">¿Olvidaste tu contraseña?</a>
+        </div>
+
+      </div>
+
+    </div>
   </div>
 
   <script src="public/js/config.js"></script>

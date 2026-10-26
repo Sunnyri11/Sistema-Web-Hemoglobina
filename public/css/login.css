@@ -1,8 +1,7 @@
 body {
   font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-  background-color: #f3f4f6;
+  background: linear-gradient(135deg, #e0f2fe 0%, #bae6fd 100%);
   margin: 0;
-  padding: 20px;
   display: flex;
   justify-content: center;
   align-items: center;
@@ -10,112 +9,101 @@ body {
   box-sizing: border-box;
 }
 
-.card {
-  background-color: #ffffff;
-  padding: 30px;
-  border-radius: 12px;
-  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+.login-main-container {
   width: 100%;
-  max-width: 400px;
+  max-width: 950px;
+  padding: 15px;
   box-sizing: border-box;
 }
 
-.header {
-  text-align: center;
-  margin-bottom: 24px;
+.login-card-wrapper {
+  background-color: #ffffff;
+  border-radius: 16px;
+  box-shadow: 0 10px 25px rgba(14, 116, 144, 0.15);
+  overflow: hidden; /* Esto oculta cualquier desbordamiento manteniendo los bordes limpios */
+  min-height: 580px;
+}
+
+.login-left-panel {
+  background: linear-gradient(180deg, #1e40af 0%, #1d4ed8 50%, #2563eb 100%);
+  position: relative;
+  overflow: hidden; /* Contiene la imagen ampliada */
+}
+
+.mascot-img {
+  max-height: 380px !important; /* Incrementamos el tamaño visual */
+  width: auto;
+  transform: scale(1.1);       /* Le da un efecto de expansión controlado */
+  transition: transform 0.3s ease;
 }
 
 .header h1 {
-  margin: 0;
-  font-size: 24px;
-  color: #1f2937;
+  font-size: 26px;
+  color: #1e293b;
 }
 
 .header p {
-  margin: 4px 0 0 0;
   font-size: 14px;
-  color: #6b7280;
+  color: #64748b;
 }
 
-.form-group {
-  margin-bottom: 16px;
-}
-
-label {
-  display: block;
+.form-label {
   font-size: 13px;
-  font-weight: 500;
-  color: #374151;
+  font-weight: 600;
+  color: #334155;
   margin-bottom: 6px;
 }
 
-input[type="email"],
-input[type="password"],
-select {
-  width: 100%;
-  padding: 10px 12px;
-  border: 1px solid #d1d5db;
-  border-radius: 8px;
+.form-control,
+.form-select {
+  padding: 11px 14px;
+  border: 1px solid #cbd5e1;
+  border-radius: 10px;
   font-size: 14px;
-  background-color: #ffffff;
+  background-color: #f8fafc;
   box-sizing: border-box;
-  outline: none;
-  transition: border-color 0.2s, box-shadow 0.2s;
+  transition: all 0.2s ease-in-out;
 }
 
-input:focus,
-select:focus {
-  border-color: #7c3aed;
-  box-shadow: 0 0 0 3px rgba(124, 58, 237, 0.15);
-}
-
-.divider {
-  border-top: 1px solid #e5e7eb;
-  margin: 20px 0;
-  padding-top: 16px;
+.form-control:focus,
+.form-select:focus {
+  border-color: #2563eb;
+  background-color: #ffffff;
+  box-shadow: 0 0 0 4px rgba(37, 99, 235, 0.12);
 }
 
 .divider-title {
   font-size: 11px;
-  font-weight: 600;
-  color: #7c3aed;
-  text-transform: uppercase;
-  letter-spacing: 0.5px;
-  margin-bottom: 16px;
+  color: #2563eb;
+  letter-spacing: 0.8px;
 }
 
-.btn-primary {
-  width: 100%;
-  background-color: #7c3aed;
+.btn-custom-primary {
+  background-color: #2563eb;
   color: #ffffff;
   border: none;
-  padding: 12px;
-  font-size: 16px;
-  font-weight: 500;
-  border-radius: 8px;
-  cursor: pointer;
+  font-size: 15px;
+  font-weight: 600;
+  border-radius: 10px;
   transition: background-color 0.2s;
-  margin-bottom: 10px;
 }
 
-.btn-primary:hover {
-  background-color: #6d28d9;
+.btn-custom-primary:hover {
+  background-color: #1d4ed8;
 }
 
-.btn-secondary {
-  width: 100%;
+.btn-custom-secondary {
   background-color: #ffffff;
-  color: #7c3aed;
-  border: 1px solid #ddd6fe;
-  padding: 12px;
+  color: #2563eb;
+  border: 1px solid #bfdbfe;
   font-size: 14px;
-  font-weight: 500;
-  border-radius: 8px;
-  cursor: pointer;
-  transition: background-color 0.2s;
+  font-weight: 600;
+  border-radius: 10px;
   text-transform: uppercase;
+  transition: background-color 0.2s;
 }
 
-.btn-secondary:hover {
-  background-color: #f9fafb;
+.btn-custom-secondary:hover {
+  background-color: #eff6ff;
+  color: #1d4ed8;
 }
