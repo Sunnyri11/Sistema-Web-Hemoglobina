@@ -1,21 +1,21 @@
 {
   "name": "Sistema HB",
-  "short_name": "MiApp",
+  "short_name": "Sistema HB",
   "start_url": "./index.html",
   "display": "standalone",
   "background_color": "#ffffff",
   "theme_color": "#4A90E2",
-  "orientation": "portrait",
-    "icons": [
+  "icons": [
     {
-        "src": "./public/img/icon_192.png",
-        "sizes": "192x192",
-        "type": "image/png"
+      "src": "./public/img/icon_192.png",
+      "sizes": "192x192",
+      "type": "image/png"
     },
     {
-        "src": "./public/img/icon_512.png",
-        "sizes": "512x512",
-        "type": "image/png"
+      "src": "./public/img/icon_512.png",
+      "sizes": "512x512",
+      "type": "image/png"
     }
-    ]
+  ],
+  "description": "Monitoreo de hemoglobina"
 }

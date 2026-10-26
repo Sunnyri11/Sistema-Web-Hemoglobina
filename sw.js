@@ -1,58 +1,53 @@
-const CACHE_NAME = 'sistema-hemoglobina-v1';
-const urlsToCache = [
+// Service worker: la app sigue abriendo sin internet, pero siempre prefiere la versión más nueva.
+const CACHE_NAME = 'sistema-hemoglobina-v2';
+const ARCHIVOS_BASE = [
   './',
   './index.html',
-  './public/css/administrador.css',
-  './public/css/editarmedico.css',
-  './public/css/editarpaciente.css',
+  './manifest.json',
   './public/css/login.css',
-  './public/css/medicos.css',
-  './public/css/monitoreo.css',
-  './public/css/registro.css',
-  './public/js/administrador.js',
+  './public/css/loader.css',
   './public/js/config.js',
-  './public/js/editarmedico.js',
-  './public/js/editarpaciente.js',
-  './public/js/medicos.js',
-  './public/js/paciente.js',
-  './public/js/utils.js',
-  './public/img/icon192.png',
-  './public/img/icon512.png'
-  // Si tienes archivos dentro de la carpeta 'view', agrégalos también aquí con su ruta relativa, por ejemplo:
-  // './view/tu-vista.html'
+  './public/js/loader.js',
+  './public/js/login.js',
+  './public/img/icon.png',
+  './public/img/icon_192.png',
+  './public/img/icon_512.png'
 ];
 
-// Instalación del Service Worker
-self.addEventListener('install', event => {
+self.addEventListener('install', (event) => {
+  // Un archivo que falle no debe impedir que el service worker se instale.
   event.waitUntil(
     caches.open(CACHE_NAME)
-      .then(cache => {
-        return cache.addAll(urlsToCache);
-      })
+      .then((cache) => Promise.allSettled(ARCHIVOS_BASE.map((url) => cache.add(url))))
+      .then(() => self.skipWaiting())
   );
 });
 
-// Activación y limpieza de cachés antiguos
-self.addEventListener('activate', event => {
+self.addEventListener('activate', (event) => {
   event.waitUntil(
-    caches.keys().then(cacheNames => {
-      return Promise.all(
-        cacheNames.map(cacheName => {
-          if (cacheName !== CACHE_NAME) {
-            return caches.delete(cacheName);
-          }
-        })
-      );
-    })
+    caches.keys()
+      .then((nombres) => Promise.all(nombres.filter((n) => n !== CACHE_NAME).map((n) => caches.delete(n))))
+      .then(() => self.clients.claim())
   );
 });
 
-// Interceptar peticiones para servir desde la caché si no hay internet
-self.addEventListener('fetch', event => {
+// Primero la red (así un despliegue nuevo se ve de inmediato); si no hay internet, la copia guardada.
+self.addEventListener('fetch', (event) => {
+  const { request } = event;
+  const url = new URL(request.url);
+
+  // Solo se guardan archivos propios con GET. Las llamadas a la API (otro dominio) nunca pasan por la caché.
+  if (request.method !== 'GET' || url.origin !== self.location.origin) return;
+
   event.respondWith(
-    caches.match(event.request)
-      .then(response => {
-        return response || fetch(event.request);
+    fetch(request)
+      .then((respuesta) => {
+        if (respuesta.ok) {
+          const copia = respuesta.clone();
+          caches.open(CACHE_NAME).then((cache) => cache.put(request, copia));
+        }
+        return respuesta;
       })
+      .catch(() => caches.match(request).then((guardado) => guardado || caches.match('./index.html')))
   );
 });

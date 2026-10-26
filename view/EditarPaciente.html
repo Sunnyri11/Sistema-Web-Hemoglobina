@@ -4,326 +4,135 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Editar Paciente</title>
+    <title>Editar paciente - Sistema HB</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.8/dist/css/bootstrap.min.css" rel="stylesheet"
         integrity="sha384-sRIl4kxILFvY47J16cr9ZwB07vP4J8+LH7qKQnuqkuIAvNWLzeN8tE5YBujZqJLB" crossorigin="anonymous">
-
     <link rel="stylesheet" href="../public/css/editarpaciente.css">
+    <link rel="stylesheet" href="../public/css/loader.css">
 </head>
 
 <body>
-
     <div class="card">
         <div class="header-title">
             <h1>Sistema de Análisis</h1>
-            <p>Editar Perfil de Paciente</p>
+            <p>Editar perfil de paciente</p>
         </div>
 
+        <div id="aviso" class="aviso" hidden role="alert"></div>
+
         <form id="formRegistro" novalidate>
-            <div class="form-group">
-                <label for="nombre">Nombre(s)</label>
-                <input type="text" id="nombre" name="nombre" maxlength="30" placeholder="Ej. Carlos">
-            </div>
 
-            <div class="row-2">
-                <div class="form-group">
-                    <label for="paterno">Apellido Paterno</label>
-                    <input type="text" id="paterno" name="apellido_paterno" maxlength="30" placeholder="Ej. Pérez">
-                </div>
-                <div class="form-group">
-                    <label for="materno">Apellido Materno</label>
-                    <input type="text" id="materno" name="apellido_materno" maxlength="30" placeholder="Ej. Gómez">
-                </div>
-            </div>
+            <fieldset class="seccion">
+                <legend><span class="num">1</span> Datos personales</legend>
 
-            <div class="row-2">
                 <div class="form-group">
-                    <label>Género biológico</label>
-                    <div class="radio-group">
-                        <label class="radio-option">
-                            <input type="radio" id="genero_masculino" name="genero" value="1"> Hombre
-                        </label>
-                        <label class="radio-option">
-                            <input type="radio" id="genero_femenino" name="genero" value="2"> Mujer
-                        </label>
+                    <label for="nombre">Nombre(s)</label>
+                    <input type="text" id="nombre" name="nombre" maxlength="30" placeholder="Ej. Carlos" autocomplete="given-name">
+                </div>
+
+                <div class="row-2">
+                    <div class="form-group">
+                        <label for="paterno">Apellido paterno</label>
+                        <input type="text" id="paterno" name="apellido_paterno" maxlength="30" placeholder="Ej. Pérez">
+                    </div>
+                    <div class="form-group">
+                        <label for="materno">Apellido materno <span class="opcional">(opcional)</span></label>
+                        <input type="text" id="materno" name="apellido_materno" maxlength="30" placeholder="Ej. Gómez">
                     </div>
                 </div>
+
+                <div class="row-2">
+                    <div class="form-group">
+                        <span class="etiqueta">Género biológico</span>
+                        <div class="opciones">
+                            <label class="opcion"><input type="radio" id="genero_masculino" name="genero" value="1"><span>Hombre</span></label>
+                            <label class="opcion"><input type="radio" id="genero_femenino" name="genero" value="2"><span>Mujer</span></label>
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label for="fecha_nacimiento">Fecha de nacimiento</label>
+                        <input type="date" id="fecha_nacimiento" name="fecha_nacimiento">
+                    </div>
+                </div>
+            </fieldset>
+
+            <fieldset class="seccion">
+                <legend><span class="num">2</span> Ubicación</legend>
+
+                <div class="row-2">
+                    <div class="form-group">
+                        <label for="departamento">Departamento</label>
+                        <select id="departamento" name="departamento">
+                            <option value="" disabled selected>Cargando departamentos...</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="provincia">Ciudad</label>
+                        <select id="provincia" name="provincia">
+                            <option value="" disabled selected>Seleccione el departamento primero</option>
+                        </select>
+                    </div>
+                </div>
+
                 <div class="form-group">
-                    <label for="fecha_nacimiento">Fecha de Nacimiento</label>
-                    <input type="date" id="fecha_nacimiento" name="fecha_nacimiento">
+                    <label for="altitud">Altitud (m.s.n.m.)</label>
+                    <input type="number" id="altitud" name="altitud" min="0" inputmode="numeric" placeholder="Ej. 3600">
+                    <span class="helper-text">Modificable según la localidad exacta. No se permiten valores negativos.</span>
                 </div>
-            </div>
+            </fieldset>
 
-            <div class="row-2">
-                <div class="form-group">
-                    <label for="departamento">Departamento</label>
-                    <select id="departamento" name="departamento" onchange="cargarProvincias()">
-                        <option value="" disabled selected>Cargando departamentos...</option>
-                    </select>
-                </div>
+            <fieldset class="seccion">
+                <legend><span class="num">3</span> Acceso</legend>
 
                 <div class="form-group">
-                    <label for="provincia">Ciudad</label>
-                    <select id="provincia" name="provincia" onchange="actualizarAltitud()">
-                        <option value="" disabled selected>Seleccione depto primero</option>
-                    </select>
+                    <label for="correo">Correo electrónico</label>
+                    <input type="email" id="correo" name="correo" maxlength="100" placeholder="ejemplo@correo.com" autocomplete="email">
                 </div>
-            </div>
 
-            <div class="form-group">
-                <label for="altitud">Altitud (m.s.n.m.)</label>
-                <input type="number" id="altitud" name="altitud" min="0" placeholder="Ej. 3600">
-                <span class="helper-text">Modificable según la localidad exacta. No se permiten valores negativos.</span>
-            </div>
-
-            <div class="form-group">
-                <label for="correo">Correo Electrónico</label>
-                <input type="email" id="correo" name="correo" maxlength="30" placeholder="ejemplo@correo.com">
-            </div>
-
-            <!-- Contraseña opcional con botón de Ojo SVG -->
-            <div class="form-group">
-                <label for="password">Nueva Contraseña (Opcional)</label>
-                <div class="input-group">
-                    <input type="password" id="password" name="password" class="form-control" maxlength="16" placeholder="Dejar en blanco para no cambiar" autocomplete="new-password">
-                    <button class="btn btn-outline-secondary" type="button" id="btnEye1" onclick="togglePassword('password', 'iconEye1')" style="display: flex; align-items: center; justify-content: center; padding: 0.375rem 0.75rem;">
-                        <svg id="iconEye1" xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                            <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
-                            <circle cx="12" cy="12" r="3"></circle>
-                        </svg>
-                    </button>
+                <div class="row-2">
+                    <div class="form-group">
+                        <label for="password">Nueva contraseña <span class="opcional">(opcional)</span></label>
+                        <div class="campo-password">
+                            <input type="password" id="password" name="password" maxlength="16" placeholder="Dejar en blanco para no cambiar" autocomplete="new-password">
+                            <button type="button" class="btn-ojo" data-toggle-password="password" aria-label="Mostrar contraseña">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path><circle cx="12" cy="12" r="3"></circle></svg>
+                            </button>
+                        </div>
+                        <div class="fuerza"><div class="fuerza-barra" id="fuerzaBarra"></div><span class="fuerza-texto" id="fuerzaTexto"></span></div>
+                    </div>
+                    <div class="form-group">
+                        <label for="confirm_password">Confirmar contraseña</label>
+                        <div class="campo-password">
+                            <input type="password" id="confirm_password" name="confirm_password" maxlength="16" placeholder="Repite la nueva contraseña" autocomplete="new-password">
+                            <button type="button" class="btn-ojo" data-toggle-password="confirm_password" aria-label="Mostrar contraseña">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path><circle cx="12" cy="12" r="3"></circle></svg>
+                            </button>
+                        </div>
+                    </div>
                 </div>
-                <span class="helper-text">De 8 a 16 caracteres, al menos una mayúscula, una minúscula, un número y un carácter especial.</span>
-            </div>
+                <span class="helper-text">De 8 a 16 caracteres, con mayúscula, minúscula, número y un carácter especial.</span>
+            </fieldset>
 
-            <!-- Confirmar Contraseña opcional con su propio SVG -->
-            <div class="form-group">
-                <label for="confirm_password">Confirmar Nueva Contraseña</label>
-                <div class="input-group">
-                    <input type="password" id="confirm_password" name="confirm_password" class="form-control" maxlength="16" placeholder="Repita la nueva contraseña" autocomplete="new-password">
-                    <button class="btn btn-outline-secondary" type="button" id="btnEye2" onclick="togglePassword('confirm_password', 'iconEye2')" style="display: flex; align-items: center; justify-content: center; padding: 0.375rem 0.75rem;">
-                        <svg id="iconEye2" xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                            <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
-                            <circle cx="12" cy="12" r="3"></circle>
-                        </svg>
-                    </button>
+
+            <fieldset class="seccion">
+                <legend><span class="num">4</span> Datos clínicos</legend>
+                <div class="form-group">
+                    <label for="Tipo_Sangre">Tipo de sangre</label>
+                    <select id="Tipo_Sangre" name="Tipo_Sangre"></select>
                 </div>
-            </div>
+            </fieldset>
 
-            <div id="contenedorTipoSangre" class="form-group" style="margin-top: 16px;">
-                <label for="Tipo_Sangre">Tipo de Sangre</label>
-                <select id="Tipo_Sangre" name="Tipo_Sangre">
-                    <option value="" disabled selected>Seleccione su tipo de sangre</option>
-                    <optgroup label="Grupo O">
-                        <option value="O+">O Positivo (O+)</option>
-                        <option value="O-">O Negativo (O-)</option>
-                    </optgroup>
-                    <optgroup label="Grupo A">
-                        <option value="A+">A Positivo (A+)</option>
-                        <option value="A-">A Negativo (A-)</option>
-                    </optgroup>
-                    <optgroup label="Grupo B">
-                        <option value="B+">B Positivo (B+)</option>
-                        <option value="B-">B Negativo (B-)</option>
-                    </optgroup>
-                    <optgroup label="Grupo AB">
-                        <option value="AB+">AB Positivo (AB+)</option>
-                        <option value="AB-">AB Negativo (AB-)</option>
-                    </optgroup>
-                    <option value="Desconocido">No sabe</option>
-                </select>
-            </div>
-
-            <button type="submit" class="btn-submit">Guardar Cambios</button>
+            <button type="submit" class="btn-submit" id="btnGuardar">Guardar cambios</button>
         </form>
-        <hr>
-        <a class="btn btn-primary" href="Monitoreo.html">Volver al Panel</a>
+
+        <div class="pie-form">
+            <a class="btn btn-primary" href="Monitoreo.html">Volver al panel</a>
+        </div>
     </div>
 
     <script src="../public/js/config.js"></script>
-    <script src="../public/js/editarpaciente.js"></script>
-    <script>
-        // Establecer fecha máxima permitida (hoy) al cargar
-        document.addEventListener("DOMContentLoaded", () => {
-            const hoy = new Date().toISOString().split("T")[0];
-            const inputFechaNac = document.getElementById("fecha_nacimiento");
-            if(inputFechaNac) {
-                inputFechaNac.setAttribute("max", hoy);
-            }
-        });
-
-        // Envío con validaciones condicionales (los campos vacíos se omiten o mantienen por defecto)
-        document.getElementById('formRegistro').addEventListener('submit', async function (e) {
-            e.preventDefault();
-
-            const token = localStorage.getItem("token_seguridad");
-            const idPaciente = localStorage.getItem("usuario_id");
-
-            const selectDepto = document.getElementById('departamento');
-            const selectProv = document.getElementById('provincia');
-
-            const nombre = document.getElementById('nombre').value.trim();
-            const apellidoPaterno = document.getElementById('paterno').value.trim();
-            const apellidoMaterno = document.getElementById('materno').value.trim();
-            const inputFecha = document.getElementById('fecha_nacimiento').value;
-            const altitudTxt = document.getElementById('altitud').value;
-            const correo = document.getElementById('correo').value.trim();
-            const password = document.getElementById('password').value;
-            const confirmPassword = document.getElementById('confirm_password').value;
-
-            const soloTextoRegex = /^[A-Za-zÁÉÍÓÚáéíóúÑñ\s]+$/;
-            const correoRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-            const passwordRegex = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[\W_]).{8,16}$/;
-
-            // --- VALIDACIONES CONDICIONALES (Solo si se rellenan) ---
-
-            if (nombre !== "") {
-                if (nombre.length > 30) {
-                    alert("El Nombre no debe exceder los 30 caracteres.");
-                    return;
-                }
-                if (!soloTextoRegex.test(nombre)) {
-                    alert("El Nombre solo debe aceptar caracteres de texto.");
-                    return;
-                }
-            }
-
-            if (apellidoPaterno !== "") {
-                if (apellidoPaterno.length > 30) {
-                    alert("El Apellido Paterno no debe exceder los 30 caracteres.");
-                    return;
-                }
-                if (!soloTextoRegex.test(apellidoPaterno)) {
-                    alert("El Apellido Paterno solo debe aceptar caracteres de texto.");
-                    return;
-                }
-            }
-
-            if (apellidoMaterno !== "") {
-                if (apellidoMaterno.length > 30) {
-                    alert("El Apellido Materno no debe exceder los 30 caracteres.");
-                    return;
-                }
-                if (!soloTextoRegex.test(apellidoMaterno)) {
-                    alert("El Apellido Materno solo debe aceptar caracteres de texto.");
-                    return;
-                }
-            }
-
-            if (inputFecha !== "") {
-                const fechaNacimientoDate = new Date(inputFecha);
-                const hoyDate = new Date();
-                hoyDate.setHours(0, 0, 0, 0);
-                if (fechaNacimientoDate > hoyDate) {
-                    alert("La fecha de nacimiento no puede ser una fecha futura.");
-                    return;
-                }
-            }
-
-            if (altitudTxt !== "") {
-                const altitudVal = parseFloat(altitudTxt);
-                if (isNaN(altitudVal) || altitudVal < 0) {
-                    alert("La altitud no puede ser un valor negativo.");
-                    return;
-                }
-            }
-
-            if (correo !== "") {
-                if (correo.length > 30) {
-                    alert("El correo electrónico no debe exceder los 30 caracteres.");
-                    return;
-                }
-                if (!correoRegex.test(correo)) {
-                    alert("Por favor, ingrese un formato de correo electrónico válido.");
-                    return;
-                }
-            }
-
-            // Validación de contraseña opcional + confirmación
-            if (password !== "" || confirmPassword !== "") {
-                if (password !== confirmPassword) {
-                    alert("Las contraseñas no coinciden.");
-                    return;
-                }
-                if (!passwordRegex.test(password)) {
-                    alert("La nueva contraseña debe tener entre 8 y 16 caracteres, incluir letras minúsculas, mayúsculas, números y al menos un carácter especial.");
-                    return;
-                }
-            }
-
-            let tipoSangreValor = document.getElementById("Tipo_Sangre").value;
-
-            let fechaRaw = inputFecha;
-            if (fechaRaw && fechaRaw.includes("/")) {
-                const partes = fechaRaw.split("/");
-                if (partes.length === 3) {
-                    fechaRaw = `${partes[2]}-${partes[1]}-${partes[0]}`;
-                }
-            }
-
-            const inputGenero = document.querySelector('input[name="genero"]:checked');
-            const generoVal = inputGenero ? parseInt(inputGenero.value, 10) : null;
-            const idCiudadValor = selectProv && selectProv.value ? parseInt(selectProv.value, 10) : null;
-            const contenedorSangre = document.getElementById("contenedorTipoSangre");
-            const esPacienteAdemas = contenedorSangre && contenedorSangre.style.display === "block";
-
-            // Estructura de datos: Si un campo está vacío, se envía null para que el backend conserve el valor actual
-            const dataUsuario = {
-                IdUsuario: parseInt(idPaciente, 10),
-                Nombre: nombre !== "" ? nombre : null,
-                ApellidoPaterno: apellidoPaterno !== "" ? apellidoPaterno : null,
-                ApellidoMaterno: apellidoMaterno !== "" ? apellidoMaterno : null,
-                Genero: generoVal,
-                FechaNacimiento: fechaRaw !== "" ? fechaRaw : null,
-                IdCiudad: idCiudadValor,
-                Provincia: selectProv && selectProv.selectedIndex >= 0 ? selectProv.options[selectProv.selectedIndex].text : null,
-                Altitud: altitudTxt !== "" ? parseFloat(altitudTxt) : null,
-                Correo: correo !== "" ? correo : null,
-                Password: password !== "" ? password : null,
-                Rol: esPacienteAdemas ? "Paciente" : "Medico",
-                Tipo_Sangre: tipoSangreValor !== "" ? tipoSangreValor : null,
-                IdEspecialidad: 0
-            };
-
-            try {
-                const respuesta = await fetch(`${API_URL}Paciente/editarpaciente/${idPaciente}`, {
-                    method: "PUT",
-                    headers: {
-                        "Authorization": "Bearer " + token?.trim(),
-                        "Content-Type": "application/json"
-                    },
-                    body: JSON.stringify(dataUsuario)
-                });
-
-                const textoRespuesta = await respuesta.text();
-                let resultado = {};
-                try {
-                    resultado = JSON.parse(textoRespuesta);
-                } catch (e) {
-                    resultado = { mensaje: textoRespuesta };
-                }
-
-                if (respuesta.ok) {
-                    alert(resultado.mensaje || "Perfil actualizado correctamente.");
-                    window.location.href = "Monitoreo.html";
-                } else {
-                    if (resultado.errors) {
-                        let mensajesError = "Errores de validación:\n";
-                        for (const campo in resultado.errors) {
-                            mensajesError += `• ${campo}: ${resultado.errors[campo].join(', ')}\n`;
-                        }
-                        alert(mensajesError);
-                    } else {
-                        alert(resultado.mensaje || "Error 400: El formato de los datos no coincide con el servidor.");
-                    }
-                }
-            } catch (error) {
-                alert("No se pudo conectar con el servidor de la API.");
-                console.error("Error de red:", error);
-            }
-        });
-    </script>
-
+    <script src="../public/js/loader.js"></script>
+    <script type="module" src="../public/js/editarpaciente.js"></script>
 </body>
 
 </html>

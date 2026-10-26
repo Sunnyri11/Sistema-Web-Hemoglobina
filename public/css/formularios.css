@@ -1,0 +1,301 @@
+/* ============================================================================
+   Estilos compartidos de los formularios: registro, editar paciente y editar médico.
+   Misma paleta azul del login. Responsivo: móvil primero.
+   ========================================================================== */
+:root {
+    --f-primario: #2563eb;
+    --f-primario-osc: #1d4ed8;
+    --f-primario-claro: #eff6ff;
+    --f-borde: #cbd5e1;
+    --f-fondo-campo: #f8fafc;
+    --f-texto: #1e293b;
+    --f-suave: #64748b;
+    --f-error: #b91c1c;
+    --f-exito: #047857;
+}
+
+*, *::before, *::after { box-sizing: border-box; }
+
+body {
+    margin: 0;
+    font-family: 'Segoe UI', system-ui, -apple-system, Tahoma, sans-serif;
+    color: var(--f-texto);
+    background: linear-gradient(135deg, #e0f2fe 0%, #bae6fd 100%);
+    min-height: 100vh;
+    min-height: 100dvh;
+}
+
+/* ---------- Tarjeta y encabezado ---------- */
+.card {
+    border: 0;
+    background: #fff;
+    width: min(100% - 24px, 680px);
+    margin: 16px auto;
+    padding: clamp(20px, 5vw, 36px);
+    border-radius: 18px;
+    box-shadow: 0 10px 28px rgba(14, 116, 144, .15);
+}
+
+.header-title { text-align: center; margin-bottom: 22px; }
+.header-title h1 { font-size: clamp(1.3rem, 4.5vw, 1.7rem); font-weight: 800; margin: 0; }
+.header-title p { color: var(--f-suave); margin: 4px 0 0; font-size: .95rem; }
+
+/* ---------- Secciones ---------- */
+fieldset.seccion {
+    border: 0;
+    margin: 0 0 22px;
+    padding: 0;
+    min-width: 0;
+}
+
+fieldset.seccion > legend {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    width: 100%;
+    padding: 0 0 10px;
+    margin-bottom: 14px;
+    font-size: .8rem;
+    font-weight: 700;
+    letter-spacing: .08em;
+    text-transform: uppercase;
+    color: var(--f-primario);
+    border-bottom: 1px solid #e2e8f0;
+    float: none;
+}
+
+fieldset.seccion > legend .num {
+    display: inline-grid;
+    place-items: center;
+    width: 24px;
+    height: 24px;
+    border-radius: 50%;
+    background: var(--f-primario);
+    color: #fff;
+    font-size: .75rem;
+    letter-spacing: 0;
+}
+
+/* ---------- Campos ---------- */
+.form-group { margin-bottom: 14px; min-width: 0; }
+
+label, .etiqueta {
+    display: block;
+    font-size: .8rem;
+    font-weight: 600;
+    color: #334155;
+    margin-bottom: 6px;
+}
+
+.opcional { font-weight: 400; color: var(--f-suave); }
+
+input[type="text"], input[type="email"], input[type="password"],
+input[type="date"], input[type="number"], select {
+    width: 100%;
+    padding: 11px 14px;
+    font-size: 16px;               /* 16px evita el zoom automático en iPhone */
+    color: var(--f-texto);
+    background: var(--f-fondo-campo);
+    border: 1px solid var(--f-borde);
+    border-radius: 10px;
+    transition: border-color .2s, box-shadow .2s, background .2s;
+    appearance: none;
+    -webkit-appearance: none;
+}
+
+select {
+    background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='14' height='14' viewBox='0 0 24 24' fill='none' stroke='%2364748b' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'><polyline points='6 9 12 15 18 9'/></svg>");
+    background-repeat: no-repeat;
+    background-position: right 12px center;
+    padding-right: 36px;
+}
+
+input:focus, select:focus {
+    outline: none;
+    border-color: var(--f-primario);
+    background-color: #fff;
+    box-shadow: 0 0 0 4px rgba(37, 99, 235, .12);
+}
+
+input[aria-invalid="true"], select[aria-invalid="true"] {
+    border-color: var(--f-error);
+    box-shadow: 0 0 0 4px rgba(185, 28, 28, .1);
+}
+
+input[readonly] { background: #eef2f7; color: #475569; }
+
+.helper-text { display: block; margin-top: 5px; font-size: .75rem; color: var(--f-suave); }
+
+/* Una columna en móvil, dos desde tablet */
+.row-2 { display: grid; grid-template-columns: 1fr; gap: 0 14px; }
+
+/* ---------- Opciones tipo tarjeta (género, rol) ---------- */
+.opciones { display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; }
+
+.opcion { position: relative; margin: 0; }
+.opcion input { position: absolute; opacity: 0; inset: 0; width: 100%; height: 100%; cursor: pointer; }
+
+.opcion span {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    min-height: 46px;
+    padding: 10px 12px;
+    border: 1px solid var(--f-borde);
+    border-radius: 10px;
+    background: var(--f-fondo-campo);
+    font-size: .92rem;
+    font-weight: 600;
+    color: #475569;
+    text-align: center;
+    transition: all .15s;
+}
+
+.opcion input:checked + span {
+    border-color: var(--f-primario);
+    background: var(--f-primario-claro);
+    color: var(--f-primario-osc);
+    box-shadow: 0 0 0 3px rgba(37, 99, 235, .12);
+}
+
+.opcion input:focus-visible + span { outline: 2px solid var(--f-primario); outline-offset: 2px; }
+
+/* ---------- Contraseña ---------- */
+.campo-password { position: relative; }
+.campo-password input { padding-right: 46px; }
+
+.btn-ojo {
+    position: absolute;
+    top: 50%;
+    right: 6px;
+    transform: translateY(-50%);
+    width: 36px;
+    height: 36px;
+    display: grid;
+    place-items: center;
+    background: transparent;
+    border: 0;
+    border-radius: 8px;
+    color: var(--f-suave);
+    cursor: pointer;
+}
+.btn-ojo:hover { background: #e2e8f0; color: var(--f-texto); }
+
+.fuerza { display: flex; align-items: center; gap: 10px; margin-top: 8px; }
+.fuerza-barra { flex: 1; height: 6px; background: #e2e8f0; border-radius: 99px; overflow: hidden; }
+.fuerza-barra::after {
+    content: "";
+    display: block;
+    height: 100%;
+    width: calc(var(--nivel, 0) * 25%);
+    border-radius: inherit;
+    background: #ef4444;
+    transition: width .25s, background .25s;
+}
+.fuerza-barra[data-nivel="2"]::after { background: #f59e0b; }
+.fuerza-barra[data-nivel="3"]::after { background: #84cc16; }
+.fuerza-barra[data-nivel="4"]::after { background: #16a34a; }
+.fuerza-texto { min-width: 74px; font-size: .75rem; color: var(--f-suave); text-align: right; }
+
+/* ---------- Especialidades (selección múltiple) ---------- */
+.multi-especialidades .chips {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    min-height: 40px;
+    padding: 8px;
+    margin-bottom: 8px;
+    border: 1px dashed var(--f-borde);
+    border-radius: 10px;
+    background: var(--f-fondo-campo);
+}
+
+.chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 5px 6px 5px 12px;
+    border-radius: 99px;
+    background: var(--f-primario-claro);
+    border: 1px solid #bfdbfe;
+    color: var(--f-primario-osc);
+    font-size: .85rem;
+    font-weight: 600;
+}
+
+.chip button {
+    width: 22px;
+    height: 22px;
+    line-height: 1;
+    border: 0;
+    border-radius: 50%;
+    background: #dbeafe;
+    color: var(--f-primario-osc);
+    font-size: 1rem;
+    cursor: pointer;
+}
+.chip button:hover { background: #bfdbfe; }
+
+.chips-vacio { align-self: center; color: var(--f-suave); font-size: .85rem; padding-left: 4px; }
+
+/* ---------- Avisos y botones ---------- */
+.aviso { padding: 12px 14px; margin-bottom: 18px; border-radius: 10px; font-size: .9rem; line-height: 1.4; }
+.aviso[hidden] { display: none; }
+.aviso-error { background: #fef2f2; color: var(--f-error); border: 1px solid #fecaca; }
+.aviso-exito { background: #ecfdf5; color: var(--f-exito); border: 1px solid #a7f3d0; }
+.aviso-info { background: var(--f-primario-claro); color: var(--f-primario-osc); border: 1px solid #bfdbfe; }
+
+.btn-submit {
+    width: 100%;
+    min-height: 48px;
+    margin-top: 6px;
+    border: 0;
+    border-radius: 10px;
+    background: var(--f-primario);
+    color: #fff;
+    font-size: 1rem;
+    font-weight: 700;
+    cursor: pointer;
+    transition: background .2s, transform .1s;
+}
+.btn-submit:hover { background: var(--f-primario-osc); }
+.btn-submit:active { transform: scale(.99); }
+.btn-submit:disabled { opacity: .6; cursor: wait; }
+
+.enlace-volver { display: block; text-align: center; margin-top: 14px; font-weight: 600; }
+
+.pie-form { margin-top: 18px; padding-top: 16px; border-top: 1px solid #e2e8f0; text-align: center; }
+.pie-form .btn { width: 100%; }
+
+.badge-rol {
+    padding: 10px 14px;
+    border-radius: 10px;
+    background: #ecfdf5;
+    border: 1px solid #a7f3d0;
+    color: var(--f-exito);
+    font-weight: 600;
+    font-size: .9rem;
+    text-align: center;
+}
+
+[hidden] { display: none !important; }
+
+/* ---------- Tablet y escritorio ---------- */
+@media (min-width: 560px) {
+    .row-2 { grid-template-columns: 1fr 1fr; }
+    .card { margin: 28px auto; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    * { transition: none !important; animation: none !important; }
+}
+
+/* Edición de perfil */
+[hidden] { display: none !important; }
+.insignia-ok {
+    color: #047857; font-weight: 600; font-size: 14px; padding: 10px 14px;
+    background: #ecfdf5; border: 1px solid #a7f3d0; border-radius: 8px; text-align: center;
+}
+.bloque-rol { margin-top: 4px; }
+#contenedorAccionRol .btn { width: 100%; }

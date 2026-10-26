@@ -1,50 +1,30 @@
-const esSubCarpeta = window.location.pathname.includes('/view/');
-const rutaIcono = esSubCarpeta ? "../public/img/icon.png" : "public/img/icon.png";
+// Pantalla de carga global. Es un script clásico: mostrarLoader() y ocultarLoader() quedan globales.
+const rutaIcono = window.location.pathname.includes("/view/")
+    ? "../public/img/icon.png"
+    : "public/img/icon.png";
 
 function inicializarLoader() {
-  if (document.getElementById("globalLoader")) return;
+    if (document.getElementById("globalLoader")) return;
 
-  const loaderHtml = `
-    <div id="globalLoader" style="display: none;">
-      <div class="loader-container">
-        <div class="spinner-wrapper">
-          <div class="spinner-blade"></div>
-          <div class="spinner-blade"></div>
-          <div class="spinner-blade"></div>
-          <div class="spinner-blade"></div>
-          <div class="spinner-blade"></div>
-          <div class="spinner-blade"></div>
-          <div class="spinner-blade"></div>
-          <div class="spinner-blade"></div>
-          <div class="spinner-blade"></div>
-          <div class="spinner-blade"></div>
-          <div class="spinner-blade"></div>
-          <div class="spinner-blade"></div>
-          <img src="${rutaIcono}" alt="Logo" class="loader-logo" onerror="this.style.display='none'">
-        </div>
-        <span class="loader-text" id="loaderMessage">Cargando...</span>
-      </div>
-    </div>
-  `;
-  document.body.insertAdjacentHTML('beforeend', loaderHtml);
+    const aspas = '<div class="spinner-blade"></div>'.repeat(12);
+    document.body.insertAdjacentHTML("beforeend", `
+        <div id="globalLoader" role="status" aria-live="polite">
+            <div class="loader-container">
+                <div class="spinner-wrapper">
+                    ${aspas}
+                    <img src="${rutaIcono}" alt="" class="loader-logo" onerror="this.style.display='none'">
+                </div>
+                <span class="loader-text" id="loaderMessage">Cargando...</span>
+            </div>
+        </div>`);
 }
 
 function mostrarLoader(mensaje = "Cargando...") {
-  inicializarLoader();
-  const txt = document.getElementById("loaderMessage");
-  if (txt) txt.textContent = mensaje;
-  
-  const loader = document.getElementById("globalLoader");
-  if (loader) {
-    loader.style.display = "flex"; // Forzamos visibilidad directa
-    loader.classList.add("active");
-  }
+    inicializarLoader();
+    document.getElementById("loaderMessage").textContent = mensaje;
+    document.getElementById("globalLoader").classList.add("active");
 }
 
 function ocultarLoader() {
-  const loader = document.getElementById("globalLoader");
-  if (loader) {
-    loader.classList.remove("active");
-    loader.style.display = "none"; // Ocultamos al terminar
-  }
+    document.getElementById("globalLoader")?.classList.remove("active");
 }

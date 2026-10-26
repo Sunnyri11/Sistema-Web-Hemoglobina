@@ -4,148 +4,174 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Registro de Paciente - Hemoglobina</title>
+  <title>Crear cuenta - Sistema HB</title>
   <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.8/dist/css/bootstrap.min.css" rel="stylesheet"
     integrity="sha384-sRIl4kxILFvY47J16cr9ZwB07vP4J8+LH7qKQnuqkuIAvNWLzeN8tE5YBujZqJLB" crossorigin="anonymous">
-  
+
   <link rel="stylesheet" href="../public/css/registro.css">
-  <!-- CSS de la Pantalla de Carga -->
   <link rel="stylesheet" href="../public/css/loader.css">
 </head>
 
 <body>
-  <div class="card">
-    <div class="header-title">
-      <h1>Sistema de Análisis</h1>
-      <p>Registro de Nuevo Usuario</p>
-    </div>
+  <div class="auth-shell">
 
-    <form id="formRegistro" novalidate>
-      <div class="form-group">
-        <label for="nombre">Nombre(s)</label>
-        <input type="text" id="nombre" name="nombre" required maxlength="30" placeholder="Ej. Carlos">
+    <!-- Panel de marca -->
+    <aside class="auth-aside">
+      <div class="marca">
+        <img src="../public/img/icon.png" alt="Logotipo">
+        <h2>Sistema de Análisis de Hemoglobina
+          <small>Tecnología que cuida tu salud</small>
+        </h2>
       </div>
 
-      <div class="row-2">
-        <div class="form-group">
-          <label for="apellido_paterno">Apellido Paterno</label>
-          <input type="text" id="apellido_paterno" name="apellido_paterno" maxlength="30" placeholder="Ej. Pérez">
-        </div>
-        <div class="form-group">
-          <label for="apellido_materno">Apellido Materno</label>
-          <input type="text" id="apellido_materno" name="apellido_materno" maxlength="30" placeholder="Ej. Gómez">
-        </div>
+      <div class="aside-mascota">
+        <img src="../public/img/Walle-HB.png" alt="Walle-HB, la mascota del sistema">
       </div>
 
-      <div class="row-2">
-        <div class="form-group">
-          <label>Género biológico</label>
-          <div class="radio-group">
-            <label class="radio-option">
-              <input type="radio" name="genero" value="Masculino" checked> Hombre
-            </label>
-            <label class="radio-option">
-              <input type="radio" name="genero" value="Femenino"> Mujer
-            </label>
+      <ol class="aside-pasos">
+        <li><b>1</b> Crea tu cuenta como paciente o médico.</li>
+        <li><b>2</b> Registra tus análisis y mediciones.</li>
+        <li><b>3</b> Walle-HB analiza tu historial y te avisa de tendencias y riesgos.</li>
+      </ol>
+
+      <div class="aside-pie">✔ Diagnósticos rápidos &nbsp; ✔ Historial completo &nbsp; ✔ Atención personal</div>
+    </aside>
+
+    <!-- Formulario -->
+    <main class="auth-main">
+      <div class="header-title">
+        <h1>Crear cuenta</h1>
+        <p>Completa tus datos para empezar a usar el sistema.</p>
+      </div>
+
+      <div id="aviso" class="aviso" hidden role="alert"></div>
+
+      <form id="formRegistro" novalidate>
+
+        <fieldset class="seccion">
+          <legend><span class="num">1</span> Datos personales</legend>
+
+          <div class="form-group">
+            <label for="nombre">Nombre(s)</label>
+            <input type="text" id="nombre" name="nombre" maxlength="30" placeholder="Ej. Carlos" autocomplete="given-name" required>
           </div>
-        </div>
-        <div class="form-group">
-          <label for="fecha_nacimiento">Fecha de Nacimiento</label>
-          <input type="date" id="fecha_nacimiento" name="fecha_nacimiento" required>
-        </div>
-      </div>
 
-      <div class="row-2">
-        <div class="form-group">
-          <label for="departamento">Departamento</label>
-          <select id="departamento" name="departamento" onchange="cargarProvincias()" required>
-            <option value="" disabled selected>Cargando departamentos...</option>
-          </select>
-        </div>
+          <div class="row-2">
+            <div class="form-group">
+              <label for="apellido_paterno">Apellido paterno</label>
+              <input type="text" id="apellido_paterno" name="apellido_paterno" maxlength="30" placeholder="Ej. Pérez" autocomplete="family-name">
+            </div>
+            <div class="form-group">
+              <label for="apellido_materno">Apellido materno <span class="opcional">(opcional)</span></label>
+              <input type="text" id="apellido_materno" name="apellido_materno" maxlength="30" placeholder="Ej. Gómez">
+            </div>
+          </div>
 
-        <div class="form-group">
-          <label for="provincia">Ciudad</label>
-          <select id="provincia" name="provincia" onchange="actualizarAltitud()" required>
-            <option value="" disabled selected>Seleccione depto primero</option>
-          </select>
-        </div>
-      </div>
+          <div class="row-2">
+            <div class="form-group">
+              <span class="etiqueta">Género biológico</span>
+              <div class="opciones">
+                <label class="opcion"><input type="radio" name="genero" value="Masculino" checked><span>Hombre</span></label>
+                <label class="opcion"><input type="radio" name="genero" value="Femenino"><span>Mujer</span></label>
+              </div>
+            </div>
+            <div class="form-group">
+              <label for="fecha_nacimiento">Fecha de nacimiento</label>
+              <input type="date" id="fecha_nacimiento" name="fecha_nacimiento" autocomplete="bday" required>
+            </div>
+          </div>
+        </fieldset>
 
-      <div class="form-group">
-        <label for="altitud">Altitud (m.s.n.m.)</label>
-        <input type="number" id="altitud" name="altitud" min="0" placeholder="Ej. 3600" required>
-        <span class="helper-text">Modificable según la localidad exacta. No se permiten valores negativos.</span>
-      </div>
+        <fieldset class="seccion">
+          <legend><span class="num">2</span> Ubicación</legend>
 
-      <div class="form-group">
-        <label for="correo">Correo Electrónico</label>
-        <input type="email" id="correo" name="correo" required maxlength="30" placeholder="ejemplo@correo.com">
-      </div>
+          <div class="row-2">
+            <div class="form-group">
+              <label for="departamento">Departamento</label>
+              <select id="departamento" name="departamento" required>
+                <option value="" disabled selected>Cargando departamentos...</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label for="provincia">Ciudad</label>
+              <select id="provincia" name="provincia" required>
+                <option value="" disabled selected>Seleccione el departamento primero</option>
+              </select>
+            </div>
+          </div>
 
-      <!-- Contraseña -->
-      <div class="form-group">
-        <label for="password">Contraseña</label>
-        <input type="password" id="password" name="password" required maxlength="16" placeholder="••••••••">
-        <span class="helper-text">De 8 a 16 caracteres, al menos una mayúscula, una minúscula, un número y un carácter especial.</span>
-      </div>
+          <div class="form-group">
+            <label for="altitud">Altitud (m.s.n.m.)</label>
+            <input type="number" id="altitud" name="altitud" min="0" inputmode="numeric" placeholder="Se completa al elegir la ciudad" required>
+            <span class="helper-text">Se usa para calcular tus rangos de hemoglobina. Puedes ajustarla a tu localidad exacta.</span>
+          </div>
+        </fieldset>
 
-      <!-- Confirmar Contraseña -->
-      <div class="form-group">
-        <label for="confirm_password">Confirmar Contraseña</label>
-        <input type="password" id="confirm_password" name="confirm_password" required maxlength="16" placeholder="••••••••">
-      </div>
+        <fieldset class="seccion">
+          <legend><span class="num">3</span> Tu cuenta</legend>
 
-      <div class="form-group">
-        <label for="rol">Rol en el Sistema</label>
-        <select id="rol" name="rol" required onchange="Selector()">
-          <option value="" disabled selected>Seleccione el Rol</option>
-          <option value="Paciente">Paciente</option>
-          <option value="Medico">Médico</option>
-        </select>
-      </div>
+          <div class="form-group">
+            <label for="correo">Correo electrónico</label>
+            <input type="email" id="correo" name="correo" maxlength="100" placeholder="ejemplo@correo.com" autocomplete="email" required>
+          </div>
 
-      <div id="contenedorTipoSangre" class="form-group" style="display: none; margin-top: 16px;">
-        <label for="Tipo_Sangre">Tipo de Sangre</label>
-        <select id="Tipo_Sangre" name="Tipo_Sangre">
-          <option value="" disabled selected>Seleccione su tipo de sangre</option>
-          <optgroup label="Grupo O">
-            <option value="O+">O Positivo (O+)</option>
-            <option value="O-">O Negativo (O-)</option>
-          </optgroup>
-          <optgroup label="Grupo A">
-            <option value="A+">A Positivo (A+)</option>
-            <option value="A-">A Negativo (A-)</option>
-          </optgroup>
-          <optgroup label="Grupo B">
-            <option value="B+">B Positivo (B+)</option>
-            <option value="B-">B Negativo (B-)</option>
-          </optgroup>
-          <optgroup label="Grupo AB">
-            <option value="AB+">AB Positivo (AB+)</option>
-            <option value="AB-">AB Negativo (AB-)</option>
-          </optgroup>
-          <option value="Desconocido">No sabe</option>
-        </select>
-      </div>
+          <div class="row-2">
+            <div class="form-group">
+              <label for="password">Contraseña</label>
+              <div class="campo-password">
+                <input type="password" id="password" name="password" maxlength="16" placeholder="••••••••" autocomplete="new-password" required>
+                <button type="button" class="btn-ojo" data-toggle-password="password" aria-label="Mostrar contraseña">
+                  <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path><circle cx="12" cy="12" r="3"></circle></svg>
+                </button>
+              </div>
+              <div class="fuerza"><div class="fuerza-barra" id="fuerzaBarra"></div><span class="fuerza-texto" id="fuerzaTexto"></span></div>
+            </div>
+            <div class="form-group">
+              <label for="confirm_password">Confirmar contraseña</label>
+              <div class="campo-password">
+                <input type="password" id="confirm_password" name="confirm_password" maxlength="16" placeholder="••••••••" autocomplete="new-password" required>
+                <button type="button" class="btn-ojo" data-toggle-password="confirm_password" aria-label="Mostrar contraseña">
+                  <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path><circle cx="12" cy="12" r="3"></circle></svg>
+                </button>
+              </div>
+            </div>
+          </div>
+          <span class="helper-text">De 8 a 16 caracteres, con mayúscula, minúscula, número y un carácter especial.</span>
+        </fieldset>
 
-      <!-- Contenedor Oculto de Especialidades (Solo se activa si el Rol es Medico) -->
-      <div id="contenedorEspecialidad" class="form-group" style="display: none; margin-top: 16px;">
-        <label for="especialidad">Especialidad Médica</label>
-        <select id="especialidad" name="especialidad">
-          <option value="" disabled selected>Seleccione especialidad</option>
-        </select>
-      </div>
+        <fieldset class="seccion">
+          <legend><span class="num">4</span> ¿Cómo usarás el sistema?</legend>
 
-      <button type="submit" class="btn-submit">Registrar Usuario</button>
-    </form>
-    <hr>
-    <a class="btn btn-primary" href="../index.html">Iniciar Sesión</a>
+          <div class="opciones">
+            <label class="opcion"><input type="radio" name="rol" value="Paciente"><span>Paciente<small>Controlo mi hemoglobina</small></span></label>
+            <label class="opcion"><input type="radio" name="rol" value="Medico"><span>Médico<small>Sigo a mis pacientes</small></span></label>
+          </div>
+
+          <div id="contenedorTipoSangre" class="bloque-rol" hidden>
+            <div class="form-group">
+              <label for="Tipo_Sangre">Tipo de sangre</label>
+              <select id="Tipo_Sangre" name="Tipo_Sangre"></select>
+            </div>
+          </div>
+
+          <div id="contenedorEspecialidad" class="bloque-rol" hidden>
+            <div class="form-group">
+              <span class="etiqueta">Especialidades médicas</span>
+              <div id="selectorEspecialidades"></div>
+              <span class="helper-text">Puedes elegir más de una.</span>
+            </div>
+          </div>
+        </fieldset>
+
+        <button type="submit" class="btn-submit" id="btnRegistrar">Crear cuenta</button>
+      </form>
+
+      <p class="volver-login">¿Ya tienes cuenta? <a href="../index.html">Iniciar sesión</a></p>
+    </main>
   </div>
 
   <script src="../public/js/config.js"></script>
-  <!-- Script de la Pantalla de Carga -->
   <script src="../public/js/loader.js"></script>
-
-  <script src="../public/js/register.js"> </script>
+  <script type="module" src="../public/js/register.js"></script>
 </body>
 </html>

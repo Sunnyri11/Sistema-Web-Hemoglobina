@@ -4,135 +4,145 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Editar Médico</title>
+    <title>Editar médico - Sistema HB</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.8/dist/css/bootstrap.min.css" rel="stylesheet"
         integrity="sha384-sRIl4kxILFvY47J16cr9ZwB07vP4J8+LH7qKQnuqkuIAvNWLzeN8tE5YBujZqJLB" crossorigin="anonymous">
-
-    <!-- CSS Personalizado para Editar Médico -->
     <link rel="stylesheet" href="../public/css/editarmedico.css">
+    <link rel="stylesheet" href="../public/css/loader.css">
 </head>
 
 <body>
-
     <div class="card">
         <div class="header-title">
             <h1>Sistema de Análisis</h1>
-            <p>Editar Perfil de Médico</p>
+            <p>Editar perfil de médico</p>
         </div>
 
-        <form id="formRegistro">
-            <div class="form-group">
-                <label for="nombre">Nombre(s)</label>
-                <input type="text" id="nombre" name="nombre" required placeholder="Ej. Carlos">
-            </div>
+        <div id="aviso" class="aviso" hidden role="alert"></div>
 
-            <div class="row-2">
-                <div class="form-group">
-                    <label for="apellido_paterno">Apellido Paterno</label>
-                    <input type="text" id="paterno" name="apellido_paterno" required placeholder="Ej. Pérez">
-                </div>
-                <div class="form-group">
-                    <label for="apellido_materno">Apellido Materno</label>
-                    <input type="text" id="materno" name="apellido_materno" required placeholder="Ej. Gómez">
-                </div>
-            </div>
+        <form id="formRegistro" novalidate>
 
-            <div class="row-2">
+            <fieldset class="seccion">
+                <legend><span class="num">1</span> Datos personales</legend>
+
                 <div class="form-group">
-                    <label>Género biológico</label>
-                    <div class="radio-group">
-                        <label class="radio-option">
-                            <input type="radio" id="genero_masculino" name="genero" value="1"> Hombre
-                        </label>
-                        <label class="radio-option">
-                            <input type="radio" id="genero_femenino" name="genero" value="2"> Mujer
-                        </label>
+                    <label for="nombre">Nombre(s)</label>
+                    <input type="text" id="nombre" name="nombre" maxlength="30" placeholder="Ej. Carlos" autocomplete="given-name">
+                </div>
+
+                <div class="row-2">
+                    <div class="form-group">
+                        <label for="paterno">Apellido paterno</label>
+                        <input type="text" id="paterno" name="apellido_paterno" maxlength="30" placeholder="Ej. Pérez">
+                    </div>
+                    <div class="form-group">
+                        <label for="materno">Apellido materno <span class="opcional">(opcional)</span></label>
+                        <input type="text" id="materno" name="apellido_materno" maxlength="30" placeholder="Ej. Gómez">
                     </div>
                 </div>
-                <div class="form-group">
-                    <label for="fecha_nacimiento">Fecha de Nacimiento</label>
-                    <input type="date" id="fecha_nacimiento" name="fecha_nacimiento" required>
+
+                <div class="row-2">
+                    <div class="form-group">
+                        <span class="etiqueta">Género biológico</span>
+                        <div class="opciones">
+                            <label class="opcion"><input type="radio" id="genero_masculino" name="genero" value="1"><span>Hombre</span></label>
+                            <label class="opcion"><input type="radio" id="genero_femenino" name="genero" value="2"><span>Mujer</span></label>
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label for="fecha_nacimiento">Fecha de nacimiento</label>
+                        <input type="date" id="fecha_nacimiento" name="fecha_nacimiento">
+                    </div>
                 </div>
-            </div>
+            </fieldset>
 
-            <div class="row-2">
-                <div class="form-group">
-                    <label for="departamento">Departamento</label>
-                    <select id="departamento" name="departamento" onchange="cargarProvincias()" required>
-                        <option value="" disabled selected>Cargando departamentos...</option>
-                    </select>
+            <fieldset class="seccion">
+                <legend><span class="num">2</span> Ubicación</legend>
+
+                <div class="row-2">
+                    <div class="form-group">
+                        <label for="departamento">Departamento</label>
+                        <select id="departamento" name="departamento">
+                            <option value="" disabled selected>Cargando departamentos...</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="provincia">Ciudad</label>
+                        <select id="provincia" name="provincia">
+                            <option value="" disabled selected>Seleccione el departamento primero</option>
+                        </select>
+                    </div>
                 </div>
 
                 <div class="form-group">
-                    <label for="provincia">Provincia</label>
-                    <select id="provincia" name="provincia" onchange="actualizarAltitud()" required>
-                        <option value="" disabled selected>Seleccione depto primero</option>
-                    </select>
+                    <label for="altitud">Altitud (m.s.n.m.)</label>
+                    <input type="number" id="altitud" name="altitud" min="0" inputmode="numeric" placeholder="Ej. 3600">
+                    <span class="helper-text">Modificable según la localidad exacta. No se permiten valores negativos.</span>
                 </div>
-            </div>
+            </fieldset>
 
-            <div class="form-group">
-                <label for="altitud">Altitud (m.s.n.m.)</label>
-                <input type="number" id="altitud" name="altitud" placeholder="Ej. 3600" required>
-                <span class="helper-text">Modificable según la localidad exacta</span>
-            </div>
+            <fieldset class="seccion">
+                <legend><span class="num">3</span> Acceso</legend>
 
-            <div class="form-group">
-                <label for="correo">Correo Electrónico</label>
-                <input type="email" id="correo" name="correo" required placeholder="ejemplo@correo.com">
-            </div>
+                <div class="form-group">
+                    <label for="correo">Correo electrónico</label>
+                    <input type="email" id="correo" name="correo" maxlength="100" placeholder="ejemplo@correo.com" autocomplete="email">
+                </div>
 
-            <div class="form-group">
-                <label for="password">Contraseña</label>
-                <input type="password" id="password" name="password" placeholder="Dejar en blanco para no cambiar">
-            </div>
+                <div class="row-2">
+                    <div class="form-group">
+                        <label for="password">Nueva contraseña <span class="opcional">(opcional)</span></label>
+                        <div class="campo-password">
+                            <input type="password" id="password" name="password" maxlength="16" placeholder="Dejar en blanco para no cambiar" autocomplete="new-password">
+                            <button type="button" class="btn-ojo" data-toggle-password="password" aria-label="Mostrar contraseña">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path><circle cx="12" cy="12" r="3"></circle></svg>
+                            </button>
+                        </div>
+                        <div class="fuerza"><div class="fuerza-barra" id="fuerzaBarra"></div><span class="fuerza-texto" id="fuerzaTexto"></span></div>
+                    </div>
+                    <div class="form-group">
+                        <label for="confirm_password">Confirmar contraseña</label>
+                        <div class="campo-password">
+                            <input type="password" id="confirm_password" name="confirm_password" maxlength="16" placeholder="Repite la nueva contraseña" autocomplete="new-password">
+                            <button type="button" class="btn-ojo" data-toggle-password="confirm_password" aria-label="Mostrar contraseña">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path><circle cx="12" cy="12" r="3"></circle></svg>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+                <span class="helper-text">De 8 a 16 caracteres, con mayúscula, minúscula, número y un carácter especial.</span>
+            </fieldset>
 
-            <!-- NUEVO SELECT PARA ESPECIALIDADES -->
-            <div id="contenedorEspecialidades" class="form-group">
-                <label for="selectEspecialidades">Especialidad Médica</label>
-                <select id="selectEspecialidades" name="especialidad" required>
-                    <option value="" disabled selected>Cargando especialidades...</option>
-                    <!-- Las opciones de tu API se renderizarán aquí -->
-                </select>
-            </div>
 
-            <!-- CONTENEDOR DINÁMICO PARA EL BOTÓN O MENSAJE DE ROL PACIENTE -->
-            <div id="contenedorAccionRol" class="form-group" style="margin-top: 16px;">
-                <!-- Se genera dinámicamente mediante JavaScript -->
-            </div>
+            <fieldset class="seccion">
+                <legend><span class="num">4</span> Perfil profesional</legend>
+                <div class="form-group">
+                    <span class="etiqueta">Especialidades médicas</span>
+                    <div id="selectorEspecialidades"></div>
+                    <span class="helper-text">Puedes tener más de una. Quita con la × y agrega desde la lista.</span>
+                </div>
 
-            <div id="contenedorTipoSangre" class="form-group" style="display: none; margin-top: 16px;">
-                <label for="Tipo_Sangre">Tipo de Sangre</label>
-                <select id="Tipo_Sangre" name="Tipo_Sangre">
-                    <option value="" disabled selected>Seleccione su tipo de sangre</option>
-                    <optgroup label="Grupo O">
-                        <option value="O+">O Positivo (O+)</option>
-                        <option value="O-">O Negativo (O-)</option>
-                    </optgroup>
-                    <optgroup label="Grupo A">
-                        <option value="A+">A Positivo (A+)</option>
-                        <option value="A-">A Negativo (A-)</option>
-                    </optgroup>
-                    <optgroup label="Grupo B">
-                        <option value="B+">B Positivo (B+)</option>
-                        <option value="B-">B Negativo (B-)</option>
-                    </optgroup>
-                    <optgroup label="Grupo AB">
-                        <option value="AB+">AB Positivo (AB+)</option>
-                        <option value="AB-">AB Negativo (AB-)</option>
-                    </optgroup>
-                    <option value="Desconocido">No sabe</option>
-                </select>
-            </div>
+                <!-- Rol de paciente: se completa por JavaScript según si ya está registrado -->
+                <div id="contenedorAccionRol" class="form-group"></div>
+                <div id="contenedorTipoSangre" class="bloque-rol" hidden>
+                    <div class="form-group">
+                        <label for="Tipo_Sangre">Tipo de sangre</label>
+                        <select id="Tipo_Sangre" name="Tipo_Sangre"></select>
+                    </div>
+                </div>
+            </fieldset>
 
-            <button type="submit" class="btn-submit" style="margin-top: 20px;">Guardar Cambios</button>
+            <button type="submit" class="btn-submit" id="btnGuardar">Guardar cambios</button>
         </form>
-        <hr>
-        <a class="btn btn-primary" href="Pagina_Medicos.html">Volver al Panel</a>
+
+        <div class="pie-form">
+            <a class="btn btn-primary" href="Pagina_Medicos.html">Volver al panel</a>
+        </div>
     </div>
 
     <script src="../public/js/config.js"></script>
-    <script src="../public/js/editarmedico.js"></script>
+    <script src="../public/js/loader.js"></script>
+    <script type="module" src="../public/js/editarmedico.js"></script>
 </body>
 
 </html>

@@ -31,7 +31,7 @@
     <main>
         <!-- BIENVENIDA -->
         <div class="banner-admin">
-            <span style="color: var(--accent-primary); font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 1px;">Control Global</span>
+            <span class="banner-etiqueta">Control Global</span>
             <h1 id="txtAdmin">Cargando Administrador...</h1>
             <p>Auditoría de historias clínicas, personal médico asignado y alertas epidemiológicas.</p>
         </div>
@@ -62,11 +62,11 @@
         <div class="panel-control">
             <div class="panel-header">
                 <div class="tabs-container">
-                    <button class="tab-btn active" onclick="cambiarPestaña('panel-pacientes', this)">Pacientes</button>
-                    <button class="tab-btn" onclick="cambiarPestaña('panel-medicos', this)">Cuerpo Médico</button>
+                    <button class="tab-btn active" data-panel="panel-pacientes">Pacientes</button>
+                    <button class="tab-btn" data-panel="panel-medicos">Cuerpo Médico</button>
                 </div>
                 <div class="search-box">
-                    <input type="text" id="buscadorGeneral" placeholder="Buscar por nombre o correo...">
+                    <input type="search" id="buscadorGeneral" placeholder="Buscar por nombre o correo..." aria-label="Buscar">
                 </div>
             </div>
 
@@ -79,14 +79,12 @@
                                 <th>Paciente</th>
                                 <th>Contacto</th>
                                 <th>Género</th>
-                                <th style="text-align: center;">Sangre</th>
-                                <th style="text-align: center;">Acciones</th>
+                                <th>Sangre</th>
+                                <th>Acciones</th>
                             </tr>
                         </thead>
                         <tbody id="tbodyPacientes">
-                            <tr>
-                                <td colspan="5" style="text-align: center; color: var(--text-muted); padding: 40px;">Cargando registros...</td>
-                            </tr>
+                            <tr class="fila-mensaje"><td colspan="5">Cargando registros...</td></tr>
                         </tbody>
                     </table>
                 </div>
@@ -102,13 +100,11 @@
                                 <th>Correo</th>
                                 <th>Fecha Nac.</th>
                                 <th>Especialidades</th>
-                                <th style="text-align: center;">A Cargo</th>
+                                <th>A Cargo</th>
                             </tr>
                         </thead>
                         <tbody id="tbodyMedicos">
-                            <tr>
-                                <td colspan="5" style="text-align: center; color: var(--text-muted); padding: 40px;">Cargando registros...</td>
-                            </tr>
+                            <tr class="fila-mensaje"><td colspan="5">Cargando registros...</td></tr>
                         </tbody>
                     </table>
                 </div>
@@ -121,15 +117,15 @@
         <div class="modal-card">
             <div class="modal-header-box">
                 <h3 id="modalHistorialTitulo">Historial de Hemoglobina</h3>
-                <button class="close-modal-btn" onclick="cerrarModal('modalHistorial')">&times;</button>
+                <button class="close-modal-btn" data-cerrar aria-label="Cerrar">&times;</button>
             </div>
             <div class="table-wrapper">
                 <table>
                     <thead>
                         <tr>
                             <th>Fecha</th>
-                            <th style="text-align: center;">Valor</th>
-                            <th style="text-align: center;">Referencia</th>
+                            <th>Valor</th>
+                            <th>Referencia</th>
                         </tr>
                     </thead>
                     <tbody id="modalHistorialCuerpo"></tbody>
@@ -140,38 +136,19 @@
 
     <!-- VENTANA MODAL 2: MÉDICOS ASIGNADOS A UN PACIENTE -->
     <div id="modalMedicosAsignados" class="custom-modal">
-        <div class="modal-card" style="max-width: 450px;">
+        <div class="modal-card modal-chico">
             <div class="modal-header-box">
                 <h3>Médicos Asignados</h3>
-                <button class="close-modal-btn" onclick="cerrarModal('modalMedicosAsignados')">&times;</button>
+                <button class="close-modal-btn" data-cerrar aria-label="Cerrar">&times;</button>
             </div>
-            <div id="modalMedicosLista" style="display: flex; flex-direction: column; gap: 10px; padding: 10px 0;">
+            <div id="modalMedicosLista" class="lista-medicos">
                 <!-- Lista de médicos inyectada mediante JS -->
             </div>
         </div>
     </div>
 
-    <!-- LÓGICA DE CONTROL DE INTERFAZ NATIVA -->
-    <script>
-        function cambiarPestaña(panelId, boton) {
-            // Ocultar todos los paneles clínicos
-            document.querySelectorAll('.tab-content').forEach(p => p.classList.remove('active'));
-            // Remover estado activo de los botones selectores
-            document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
-            
-            // Activar el contenedor y el control correspondiente
-            document.getElementById(panelId).classList.add('active');
-            boton.classList.add('active');
-        }
-
-        // Funciones rápidas para el control de visualización de popups
-        function abrirModal(id) { document.getElementById(id).classList.add('show'); }
-        function cerrarModal(id) { document.getElementById(id).classList.remove('show'); }
-    </script>
-
     <!-- VÍNCULO CON SCRIPTS LOGICOS -->
     <script src="../public/js/config.js"></script>
-    <script src="../public/js/components.js"></script>
-    <script src="../public/js/administrador.js"></script>
+    <script type="module" src="../public/js/administrador.js"></script>
 </body>
 </html>

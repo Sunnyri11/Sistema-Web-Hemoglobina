@@ -1,239 +1,184 @@
-// Listas globales en memoria para permitir el filtrado en tiempo real sin recargar de la API
-let listaPacientesGlobal = [];
-let listaMedicosGlobal = [];
+// Panel del administrador: métricas globales, pacientes y cuerpo médico.
+import { $, escapeHtml, getUserId, cerrarSesion, exigirSesion, formatearFecha, normalizar, debounce } from "./utils.js";
+import { api, sesionInvalida } from "./api.js";
+import { activarMenuHamburguesa } from "./ui.js";
 
-function cerrarSesion() {
-    localStorage.removeItem("token_seguridad");
-    localStorage.removeItem("usuario_id");
-    window.location.href = "../index.html";
+let pacientes = [];
+let medicos = [];
+
+const nombreDe = (dp = {}) => [dp.nombre, dp.paterno, dp.materno, dp.apellido].filter(Boolean).join(" ").trim();
+const mensajeFila = (columnas, texto) => `<tr class="fila-mensaje"><td colspan="${columnas}">${escapeHtml(texto)}</td></tr>`;
+
+// ---------------------------------------------------------------------------
+// Carga
+// ---------------------------------------------------------------------------
+async function cargarAdministrador() {
+    const resp = await api(`Administrador/MisDatos/${getUserId()}`);
+    if (!resp.ok) return;
+    const u = resp.datos?.usuario ?? resp.datos?.persona ?? {};
+    const nombre = nombreDe(u);
+    $("txtAdmin").textContent = nombre ? `Bienvenido, ${nombre}` : "Bienvenido, Administrador";
 }
 
-document.addEventListener("DOMContentLoaded", async function () {
-    const token = localStorage.getItem("token_seguridad");
-
-    // Configurar evento de cierre de sesión
-    const btnLogout = document.getElementById("btnCerrarSesion");
-    if (btnLogout) {
-        btnLogout.addEventListener("click", cerrarSesion);
+async function cargarDashboard() {
+    const resp = await api("Dashboard/administrador");
+    if (sesionInvalida(resp)) {
+        alert("Su sesión administrativa expiró o no es válida.");
+        return cerrarSesion();
     }
-
-    // Validación estricta de seguridad en el cliente
-    if (!token) {
-        alert("Acceso denegado. Inicie sesión con credenciales de Administrador.");
-        window.location.href = "../index.html";
+    if (!resp.ok) {
+        const texto = resp.status === 0 ? "No se pudo establecer conexión con el servidor central." : "No se pudieron cargar los datos.";
+        $("tbodyPacientes").innerHTML = mensajeFila(5, texto);
+        $("tbodyMedicos").innerHTML = mensajeFila(5, texto);
         return;
     }
 
-    try {
-        cargarAdministrador();
-        // Petición al endpoint consolidado del Administrador
-        const respuesta = await fetch(`${API_URL}Dashboard/administrador`, {
-            method: "GET",
-            headers: {
-                "Authorization": "Bearer " + token.trim(),
-                "Content-Type": "application/json"
-            }
-        });
+    const datos = resp.datos ?? {};
+    const m = datos.metricasGlobales ?? {};
+    $("lblTotalPacientes").textContent = m.totalPacientes ?? 0;
+    $("lblTotalMedicos").textContent = m.totalMedicos ?? 0;
+    $("lblAlertasRiesgo").textContent = m.alertasRiesgo ?? 0;
 
-        if (respuesta.ok) {
-            const datos = await respuesta.json();
-
-            // 1. Renderizar información básica y métricas globales
-            document.getElementById("lblTotalPacientes").innerText = datos.metricasGlobales.totalPacientes;
-            document.getElementById("lblTotalMedicos").innerText = datos.metricasGlobales.totalMedicos;
-            document.getElementById("lblAlertasRiesgo").innerText = datos.metricasGlobales.alertasRiesgo;
-
-            // 2. Almacenar los arreglos en las variables globales para los filtros de búsqueda
-            listaPacientesGlobal = datos.pacientes || [];
-            listaMedicosGlobal = datos.medicos || [];
-
-            // 3. Renderizar las tablas inicialmente con todos los datos
-            inyectarTablaPacientes(listaPacientesGlobal);
-            inyectarTablaMedicos(listaMedicosGlobal);
-
-            // 4. Activar el motor de búsqueda en tiempo real al escribir
-            document.getElementById("buscadorGeneral").addEventListener("input", function (e) {
-                const query = e.target.value.toLowerCase().trim();
-                filtrarDatos(query);
-            });
-
-        } else {
-            alert("Su sesión administrativa ha expirado o no es válida.");
-            cerrarSesion();
-        }
-    } catch (error) {
-        console.error("Error crítico de comunicación con la API:", error);
-        alert("No se pudo establecer conexión con el servidor central.");
-    }
-});
-
-async function cargarAdministrador()
-{
-    try {
-        const token = localStorage.getItem("token_seguridad");
-        const id = localStorage.getItem("usuario_id");
-        if (!token || !id) {
-            console.error("No se encontró el token o el ID del usuario en el almacenamiento local.");
-            return;
-        }
-
-        // CORREGIDO: Apuntamos al endpoint correspondiente
-        const respuesta = await fetch(`${API_URL}Administrador/MisDatos/${id}`, {
-            method: "GET",
-            headers: {
-                "Authorization": "Bearer " + token.trim(),
-                "Content-Type": "application/json"
-            }
-        });
-
-        if (respuesta.ok) {
-            datosadmin = await respuesta.json();
-            console.log("Datos recibidos del servidor:", datosadmin);
-            var datos = datosadmin.usuario; 
-            console.log(datos);
-            var nombreAdmin= datos.nombre + " " + datos.apellido;
-            document.getElementById("txtAdmin").innerText = `Bienvenido, ${nombreAdmin}`;
-        }
-    }
-    catch (error) {
-        console.error("Error en la petición fetch de datos personales:", error);
-    }
+    pacientes = datos.pacientes ?? [];
+    medicos = datos.medicos ?? [];
+    pintar();
 }
 
+// ---------------------------------------------------------------------------
+// Tablas (se vuelven a pintar al buscar)
+// ---------------------------------------------------------------------------
+function pintar() {
+    const q = normalizar($("buscadorGeneral").value);
+    pintarPacientes(pacientes.filter((p) => coincide(p.datosPersonales, q)));
+    pintarMedicos(medicos.filter((m) => coincide(m.datosPersonales, q)));
+}
 
-// --- RENDERIZADO DINÁMICO DE LA TABLA DE PACIENTES ---
-function inyectarTablaPacientes(pacientes) {
-    const tbody = document.getElementById("tbodyPacientes");
-    tbody.innerHTML = "";
+function coincide(dp = {}, q) {
+    return !q || normalizar(`${nombreDe(dp)} ${dp.correo ?? ""}`).includes(q);
+}
 
-    if (pacientes.length === 0) {
-        tbody.innerHTML = `<tr><td colspan="5" style="text-align: center; color: var(--text-muted); padding: 40px;">No se encontraron pacientes que coincidan.</td></tr>`;
+function pintarPacientes(lista) {
+    const tbody = $("tbodyPacientes");
+    if (lista.length === 0) {
+        tbody.innerHTML = mensajeFila(5, "No se encontraron pacientes que coincidan.");
         return;
     }
 
-    pacientes.forEach(p => {
-        // Corrección de acceso: .datosPersonales viene como .datosPersonales (minúscula inicial)
-        const dp = p.datosPersonales || {};
-        const nombreCompleto = `${dp.nombre || ''} ${dp.apellido || ''}`.trim() || "Paciente sin nombre";
-        
-        // Mapeo seguro de arreglos serializados en camelCase
-        const historial = p.historialHemoglobina || [];
-        const medicos = p.medicosAsignados || [];
-
-        // Convertir arreglos internos a formato JSON string de manera segura
-        const historialString = encodeURIComponent(JSON.stringify(historial));
-        const medicosString = encodeURIComponent(JSON.stringify(medicos));
-
-        const fila = `
-            <tr>
-                <td><strong>${nombreCompleto}</strong></td>
-                <td>
-                    <div style="font-size: 13px;">${dp.correo || 'Sin correo'}</div>
-                    <div style="font-size: 11px; color: var(--text-muted);">Nacimiento: ${dp.fechaNacimiento || 'No registrada'}</div>
-                </td>
-                <td>${dp.genero || 'N/A'}</td>
-                <td style="text-align: center;"><span class="badge-blood">${p.tipoSangre || '--'}</span></td>
-                <td style="text-align: center;">
-                    <button class="btn-action" onclick="mostrarMedicosAsignados('${nombreCompleto.replace(/'/g, "\\'")}', '${medicosString}')">
-                        Ver (${medicos.length})
-                    </button>
-                </td>
-                <td style="text-align: center;">
-                    <button class="btn-action" style="background-color: #1e293b;" onclick="mostrarHistorialPaciente('${nombreCompleto.replace(/'/g, "\\'")}', '${historialString}')">
-                        Historial (${historial.length})
-                    </button>
-                </td>
-            </tr>
-        `;
-        tbody.innerHTML += fila;
-    });
-}
-
-
-// --- RENDERIZADO DINÁMICO DE LA TABLA DE MÉDICOS ---
-function inyectarTablaMedicos(medicos) {
-    const tbody = document.getElementById("tbodyMedicos");
-    tbody.innerHTML = "";
-
-    if (medicos.length === 0) {
-        tbody.innerHTML = `<tr><td colspan="5" style="text-align: center; color: var(--text-muted); padding: 40px;">No se encontraron médicos que coincidan.</td></tr>`;
-        return;
-    }
-
-    medicos.forEach(m => {
-        const dp = m.datosPersonales || {};
-        const nombreCompleto = `Dr(a). ${dp.nombre || ''} ${dp.apellido || ''}`.trim();
-        
-        // Mapear especialidades desde camelCase
-        const especs = m.especialidades || [];
-        const especialidadesHtml = especs.length > 0 
-            ? especs.map(esp => `<span style="background-color:#111827; border: 1px solid #1f2937; padding: 2px 8px; border-radius: 4px; font-size:11px; margin-right:4px;">${esp}</span>`).join('')
-            : '<span style="color: var(--text-muted); font-size:12px;">General / Ninguna</span>';
-
-        const fila = `
-            <tr>
-                <td><strong>${nombreCompleto}</strong></td>
-                <td style="color: var(--text-muted);">${dp.correo || 'Sin correo'}</td>
-                <td>${dp.fechaNacimiento || 'N/A'}</td>
-                <td><div style="display: flex; flex-wrap: wrap; gap: 4px;">${especialidadesHtml}</div></td>
-                <td style="text-align: center;">
-                    <span style="font-weight: 700; color: var(--accent-primary); font-size: 15px;">${m.totalPacientesACargo || 0}</span>
-                </td>
-            </tr>
-        `;
-        tbody.innerHTML += fila;
-    });
-}
-
-// --- DESPLEGAR HISTORIAL DE HEMOGLOBINA EN EL MODAL ---
-window.mostrarHistorialPaciente = function (nombrePaciente, historialEncoded) {
-    const historial = JSON.parse(decodeURIComponent(historialEncoded));
-    
-    document.getElementById("modalHistorialTitulo").innerText = `Historial Clínico: ${nombrePaciente}`;
-    const cuerpoModal = document.getElementById("modalHistorialCuerpo");
-    cuerpoModal.innerHTML = "";
-
-    if (historial.length === 0) {
-        cuerpoModal.innerHTML = `<tr><td colspan="3" style="text-align: center; color: var(--text-muted); padding: 20px;">Este paciente no registra análisis de laboratorio.</td></tr>`;
-    } else {
-        historial.forEach(h => {
-            // Mapeo corregido a las propiedades del DTO en minúsculas iniciales
-            const valor = h.valorHemoglobina || "0.00";
-            const rango = h.rangoReferencia || {};
-            const min = rango.valorMin !== undefined ? rango.valorMin : "--";
-            const max = rango.valorMax !== undefined ? rango.valorMax : "--";
-            
-            cuerpoModal.innerHTML += `
-                <tr>
-                    <td>${h.fechaAnalisis || 'Sin fecha'}</td>
-                    <td style="text-align: center; font-weight:700; color: var(--text-main);">${valor} g/dL</td>
-                    <td style="text-align: center; color: var(--text-muted); font-size:13px;">${min} - ${max}</td>
-                </tr>
-            `;
-        });
-    }
-    abrirModal("modalHistorial");
-};
-
-// --- DESPLEGAR MÉDICOS ASIGNADOS EN EL MODAL ---
-window.mostrarMedicosAsignados = function (nombrePaciente, medicosEncoded) {
-    const medicos = JSON.parse(decodeURIComponent(medicosEncoded));
-    const contenedorLista = document.getElementById("modalMedicosLista");
-    contenedorLista.innerHTML = "";
-
-    if (medicos.length === 0) {
-        contenedorLista.innerHTML = `<div style="text-align:center; color: var(--text-muted); padding:10px;">Este paciente no tiene médicos especialistas asignados.</div>`;
-    } else {
-        medicos.forEach(m => {
-            // Corrección: leer nombreMedico con minúscula inicial
-            cuerpoModal = `
-                <div style="background-color: var(--bg-tabla-header); border: 1px solid var(--border-color); padding: 12px 16px; border-radius: 8px; font-weight: 600;">
-                    <span style="color: var(--accent-primary); margin-right: 8px;">✦</span> ${m.nombreMedico || 'Médico Asignado'}
+    tbody.innerHTML = lista.map((p) => {
+        const dp = p.datosPersonales ?? {};
+        const indice = pacientes.indexOf(p);
+        const nHistorial = (p.historialHemoglobina ?? []).length;
+        const nMedicos = (p.medicosAsignados ?? []).length;
+        return `
+        <tr>
+            <td data-label="Paciente"><strong>${escapeHtml(nombreDe(dp) || "Paciente sin nombre")}</strong></td>
+            <td data-label="Contacto">
+                <div class="celda-contacto">
+                    <div>${escapeHtml(dp.correo || "Sin correo")}</div>
+                    <small>Nacimiento: ${dp.fechaNacimiento ? formatearFecha(dp.fechaNacimiento) : "No registrada"}</small>
                 </div>
-            `;
-            contenedorLista.innerHTML += cuerpoModal;
-        });
-    }
-    abrirModal("modalMedicosAsignados");
-};
+            </td>
+            <td data-label="Género">${escapeHtml(dp.genero || "N/A")}</td>
+            <td data-label="Sangre"><span class="badge-blood">${escapeHtml(p.tipoSangre || "--")}</span></td>
+            <td data-label="Acciones">
+                <div class="acciones">
+                    <button class="btn-action" data-medicos="${indice}">Médicos (${nMedicos})</button>
+                    <button class="btn-action btn-oscuro" data-historial="${indice}">Historial (${nHistorial})</button>
+                </div>
+            </td>
+        </tr>`;
+    }).join("");
+}
 
+function pintarMedicos(lista) {
+    const tbody = $("tbodyMedicos");
+    if (lista.length === 0) {
+        tbody.innerHTML = mensajeFila(5, "No se encontraron médicos que coincidan.");
+        return;
+    }
+
+    tbody.innerHTML = lista.map((m) => {
+        const dp = m.datosPersonales ?? {};
+        const especialidades = (m.especialidades ?? []).length
+            ? m.especialidades.map((e) => `<span class="chip-esp">${escapeHtml(e)}</span>`).join("")
+            : '<span class="texto-suave">General / Ninguna</span>';
+        return `
+        <tr>
+            <td data-label="Médico"><strong>Dr(a). ${escapeHtml(nombreDe(dp))}</strong></td>
+            <td data-label="Correo" class="texto-suave">${escapeHtml(dp.correo || "Sin correo")}</td>
+            <td data-label="Fecha nac.">${dp.fechaNacimiento ? formatearFecha(dp.fechaNacimiento) : "N/A"}</td>
+            <td data-label="Especialidades"><div class="chips-esp">${especialidades}</div></td>
+            <td data-label="A cargo"><span class="total-cargo">${m.totalPacientesACargo ?? 0}</span></td>
+        </tr>`;
+    }).join("");
+}
+
+// ---------------------------------------------------------------------------
+// Modales
+// ---------------------------------------------------------------------------
+const abrirModal = (id) => $(id).classList.add("show");
+const cerrarModal = (id) => $(id).classList.remove("show");
+
+function mostrarHistorial(paciente) {
+    $("modalHistorialTitulo").textContent = `Historial clínico: ${nombreDe(paciente.datosPersonales) || "Paciente"}`;
+    const historial = [...(paciente.historialHemoglobina ?? [])]
+        .sort((a, b) => new Date(b.fechaAnalisis) - new Date(a.fechaAnalisis));
+
+    $("modalHistorialCuerpo").innerHTML = historial.length === 0
+        ? mensajeFila(3, "Este paciente no registra análisis de laboratorio.")
+        : historial.map((h) => {
+            const r = h.rangoReferencia ?? {};
+            return `
+            <tr>
+                <td data-label="Fecha">${h.fechaAnalisis ? formatearFecha(h.fechaAnalisis) : "Sin fecha"}</td>
+                <td data-label="Valor" class="valor-hb">${escapeHtml(h.valorHemoglobina ?? "0.00")} g/dL</td>
+                <td data-label="Referencia" class="texto-suave">${r.valorMin ?? "--"} - ${r.valorMax ?? "--"}</td>
+            </tr>`;
+        }).join("");
+    abrirModal("modalHistorial");
+}
+
+function mostrarMedicos(paciente) {
+    const lista = paciente.medicosAsignados ?? [];
+    $("modalMedicosLista").innerHTML = lista.length === 0
+        ? '<div class="texto-suave centrado">Este paciente no tiene médicos especialistas asignados.</div>'
+        : lista.map((m) => `<div class="item-medico"><span>✦</span> ${escapeHtml(m.nombreMedico || "Médico asignado")}</div>`).join("");
+    abrirModal("modalMedicosAsignados");
+}
+
+function cambiarPestana(panelId, boton) {
+    document.querySelectorAll(".tab-content").forEach((p) => p.classList.toggle("active", p.id === panelId));
+    document.querySelectorAll(".tab-btn").forEach((b) => b.classList.toggle("active", b === boton));
+}
+
+// ---------------------------------------------------------------------------
+// Inicio
+// ---------------------------------------------------------------------------
+document.addEventListener("DOMContentLoaded", async () => {
+    if (!exigirSesion("Acceso denegado. Inicie sesión con credenciales de Administrador.")) return;
+
+    activarMenuHamburguesa();
+    $("btnCerrarSesion").addEventListener("click", cerrarSesion);
+    $("buscadorGeneral").addEventListener("input", debounce(pintar, 120));
+
+    document.querySelectorAll("[data-panel]").forEach((boton) =>
+        boton.addEventListener("click", () => cambiarPestana(boton.dataset.panel, boton)));
+
+    $("tbodyPacientes").addEventListener("click", (e) => {
+        const bHist = e.target.closest("[data-historial]");
+        const bMed = e.target.closest("[data-medicos]");
+        if (bHist) mostrarHistorial(pacientes[Number(bHist.dataset.historial)]);
+        if (bMed) mostrarMedicos(pacientes[Number(bMed.dataset.medicos)]);
+    });
+
+    document.querySelectorAll(".custom-modal").forEach((modal) => {
+        modal.addEventListener("click", (e) => {
+            if (e.target === modal || e.target.closest("[data-cerrar]")) modal.classList.remove("show");
+        });
+    });
+    document.addEventListener("keydown", (e) => {
+        if (e.key === "Escape") document.querySelectorAll(".custom-modal.show").forEach((m) => m.classList.remove("show"));
+    });
+
+    await Promise.all([cargarAdministrador(), cargarDashboard()]);
+});

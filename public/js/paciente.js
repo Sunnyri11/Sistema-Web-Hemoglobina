@@ -999,6 +999,7 @@ async function ejecutarGuardadoDefinitivo() {
             setTexto("modalMensaje", "Análisis registrado de manera permanente en el servidor de la clínica.");
             setTimeout(() => {
                 cerrarModalAnalisis();
+                location.reload();
                 cargarDashboard().catch((e) => console.error("Error al refrescar el dashboard:", e)); // sin recargar la página
             }, 2000);
         } else {
