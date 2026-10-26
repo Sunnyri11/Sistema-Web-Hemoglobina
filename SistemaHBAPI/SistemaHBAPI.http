@@ -1,0 +1,6 @@
+@SistemaHBAPI_HostAddress = http://localhost:5050
+
+GET {{SistemaHBAPI_HostAddress}}/weatherforecast/
+Accept: application/json
+
+###
