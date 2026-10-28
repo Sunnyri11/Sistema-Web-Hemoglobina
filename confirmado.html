@@ -89,7 +89,7 @@
     <script>
         document.addEventListener("DOMContentLoaded", async () => {
             const urlParams = new URLSearchParams(window.location.search);
-            const codigo = urlParams.get('codigo');
+            const codigo = (urlParams.get('codigo') || '').replace(/ /g, '+');
 
             if (!codigo) {
                 mostrarError("Faltan parámetros de verificación.");
@@ -97,13 +97,10 @@
             }
 
             try {
-                const respuesta = await fetch(`${API_URL}api/Email/confirmar-cuenta/${encodeURIComponent(codigo)}`, {
+                    const respuesta = await fetch(`${API_URL}api/Email/confirmar-cuenta`, {
                     method: 'POST',
-                    headers: {
-                        'Accept': '*/*',
-                        'Content-Type': 'text/plain;charset=UTF-8'
-                    },
-                    body: ''
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ codigo })
                 });
 
 
