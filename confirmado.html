@@ -88,11 +88,8 @@
     <script src="public/js/config.js"></script>
     <script>
         document.addEventListener("DOMContentLoaded", async () => {
-
             const urlParams = new URLSearchParams(window.location.search);
-
             const codigo = urlParams.get('codigo');
-
 
             if (!codigo) {
                 mostrarError("Faltan parámetros de verificación.");
@@ -100,21 +97,31 @@
             }
 
             try {
-                
-                const respuesta = await fetch(`${API_URL}autenticacion/confirmar-correo?codigo=${encodeURIComponent(codigo)}`);
+                const respuesta = await fetch(`${API_URL}api/Email/confirmar-cuenta/${encodeURIComponent(codigo)}`, {
+                    method: 'POST',
+                    headers: {
+                        'Accept': '*/*',
+                        'Content-Type': 'text/plain;charset=UTF-8'
+                    },
+                    body: ''
+                });
+
+
+                const resultado = await respuesta.json();
+                console.log(resultado);
 
                 if (respuesta.ok) {
                     document.getElementById("estado-carga").classList.add("hidden");
                     document.getElementById("estado-exito").classList.remove("hidden");
                 } else {
-                    const textoError = await respuesta.text();
-                    mostrarError(textoError || "No se pudo verificar la cuenta.");
+                    const mensajeError = resultado.mensaje || resultado.error || "No se pudo verificar la cuenta.";
+                    mostrarError(mensajeError);
                 }
             } catch (error) {
+                console.error(error);
                 mostrarError("No se pudo conectar con el servidor.");
             }
         });
-
 
         function mostrarError(mensaje) {
             document.getElementById("estado-carga").classList.add("hidden");
@@ -126,6 +133,7 @@
             window.location.href = "https://sunnyri11.github.io/Sistema-Web-Hemoglobina/";
         }
     </script>
+
 </body>
 
 </html>
