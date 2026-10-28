@@ -1,0 +1,78 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sistema HB - Confirmación</title>
+    <style>
+        body { font-family: Arial, sans-serif; background-color: #f8fafc; display: flex; justify-content: center; align-items: center; height: 100vh; margin: 0; }
+        .card { background: white; padding: 40px; border-radius: 8px; box-shadow: 0 4px 6px -1px rgba(0,0,0,0,1); text-align: center; max-width: 400px; width: 100%; }
+        .btn { display: inline-block; background-color: #27ae60; color: white; padding: 12px 24px; text-decoration: none; border-radius: 5px; font-weight: bold; margin-top: 20px; cursor: pointer; border: none; }
+        .loader { border: 4px solid #f3f3f3; border-top: 4px solid #3498db; border-radius: 50%; width: 40px; height: 40px; animation: spin 1s linear infinite; margin: 20px auto; }
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+        .hidden { display: none; }
+    </style>
+</head>
+<body>
+
+<div class="card">
+    <div id="estado-carga">
+        <h2>Procesando tu confirmación...</h2>
+        <div class="loader"></div>
+        <p>Por favor, espera un momento.</p>
+    </div>
+
+    <div id="estado-exito" class="hidden">
+        <h2 style="color: #27ae60;">¡Cuenta Activada!</h2>
+        <p>Tu correo electrónico ha sido verificado con éxito en el <strong>Sistema HB</strong>.</p>
+        <button class="btn" onclick="redirigirLogin()">Ir al Iniciar Sesión</button>
+    </div>
+
+    <div id="estado-error" class="hidden">
+        <h2 style="color: #e74c3c;">Hubo un problema</h2>
+        <p id="mensaje-error">El enlace de confirmación es inválido o ha expirado.</p>
+    </div>
+</div>
+
+<script>
+    document.addEventListener("DOMContentLoaded", async () => {
+        // 1. Extraer los parámetros de la URL de la página
+        const urlParams = new URLSearchParams(window.location.search);
+        const email = urlParams.get('email');
+        const token = urlParams.get('token');
+
+        if (!email) {
+            mostrarError("Faltan parámetros de verificación.");
+            return;
+        }
+
+        try {
+            // 2. Hacer la petición fetch a tu API de ASP.NET Core
+            // Cambia el puerto si tu API usa otro
+            const respuesta = await fetch(`https://localhost:7176/api/autenticacion/confirmar-correo?email=${encodeURIComponent(email)}&token=${token}`);
+
+            if (respuesta.ok) {
+                document.getElementById("estado-carga").classList.add("hidden");
+                document.getElementById("estado-exito").classList.remove("hidden");
+            } else {
+                const textoError = await respuesta.text();
+                mostrarError(textoError || "No se pudo verificar la cuenta.");
+            }
+        } catch (error) {
+            mostrarError("No se pudo conectar con el servidor.");
+        }
+    });
+
+    function mostrarError(mensaje) {
+        document.getElementById("estado-carga").classList.add("hidden");
+        document.getElementById("estado-error").classList.remove("hidden");
+        document.getElementById("mensaje-error").innerText = mensaje;
+    }
+
+    function redirigirLogin() {
+        // Redirige al login de tu frontend real
+        window.location.href = "http://localhost:5050/login"; 
+    }
+</script>
+</body>
+</html>
