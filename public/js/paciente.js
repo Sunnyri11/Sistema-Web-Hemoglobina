@@ -1088,9 +1088,12 @@ async function enviarReporteCorreo(correo) {
         return;
     }
 
+    const idUsuario = getUserId();
+
     try {
+
         const respuesta = await apiFetch(
-            `Email/enviar-reporte?id_usuario=${encodeURIComponent(getUserId())}&correo_electronico=${encodeURIComponent(correo)}`,
+            `Email/enviar-reporte?id_usuario=${encodeURIComponent(idUsuario)}&correo_electronico=${encodeURIComponent(correo)}`,
             { method: "POST" }
         );
         if (!respuesta.ok) throw new Error(`Error al enviar: ${respuesta.status}`);
@@ -1100,6 +1103,20 @@ async function enviarReporteCorreo(correo) {
     } catch (error) {
         console.error("Error en enviarReporteCorreo:", error);
         alert("No se pudo enviar el reporte. Inténtelo más tarde.");
+        return; // si el reporte falló, no se notifica la entrega
+    }
+
+
+    try {
+        const resConfirmacion = await apiFetch("Email/confirmacion-reporte", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ codigo: Number(idUsuario), correo: correo })
+        });
+        if (!resConfirmacion.ok) throw new Error(`Error en confirmación: ${resConfirmacion.status}`);
+    } catch (error) {
+        // El reporte ya se envió; esto solo es la notificación, así que no se muestra alerta de fallo.
+        console.error("Error al enviar la confirmación del reporte:", error);
     }
 }
 
