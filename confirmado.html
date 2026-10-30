@@ -97,26 +97,30 @@
             }
 
             try {
-                    const respuesta = await fetch(`${API_URL}api/Email/confirmar-cuenta`, {
+                const respuesta = await fetch(`${API_URL}Email/confirmar-cuenta`, {
                     method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ codigo })
+                    headers: {
+                        'Accept': 'application/json',
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ codigo: codigo })
                 });
-
-
-                const resultado = await respuesta.json();
-                console.log(resultado);
-
+            
+                // Si el servidor responde sin JSON (404, 415, 500...), no rompe el flujo
+                let resultado = {};
+                try { resultado = await respuesta.json(); } catch { }
+            
                 if (respuesta.ok) {
                     document.getElementById("estado-carga").classList.add("hidden");
                     document.getElementById("estado-exito").classList.remove("hidden");
                 } else {
-                    const mensajeError = resultado.mensaje || resultado.error || "No se pudo verificar la cuenta.";
+                    const mensajeError = resultado.mensaje || resultado.error
+                        || `No se pudo verificar la cuenta (error ${respuesta.status}).`;
                     mostrarError(mensajeError);
                 }
-            } catch (error) {
+                } catch (error) {
                 console.error(error);
-                mostrarError("No se pudo conectar con el servidor.");
+             mostrarError("No se pudo conectar con el servidor.");
             }
         });
 
