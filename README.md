@@ -1,6 +1,6 @@
 <div align="center">
 
-<img src="https://img.icons8.com/fluency/96/blood-drop.png" alt="Logo" width="90"/>
+<img src="logo.png" alt="Logo" width="90"/>
 
 # 🩸 Sistema Web de Monitoreo No Invasivo de Niveles de Hemoglobina
 
