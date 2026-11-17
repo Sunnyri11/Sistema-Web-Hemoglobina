@@ -139,8 +139,8 @@ https://localhost:7176
 Proyecto **en desarrollo** bajo XP: 5 iteraciones de 2 semanas, 10 historias de usuario del backlog (PB-01 a PB-10) y seguimiento en Jira.
 
 - [x] Épicas 1 y 2
-- [ ] Épica 3 *(en curso)*
-- [ ] Épicas 4 y 5
+- [x] Épica 3 *(en curso)*
+- [x] Épicas 4 y 5
 
 ## 👥 Equipo
 
