@@ -23,7 +23,7 @@
   <img src="https://img.shields.io/badge/ESP32-E7352C?style=flat-square&logo=espressif&logoColor=white" alt="ESP32"/>
 </p>
 
-[📖 Frontend](frontend/) · [⚙️ Backend](backend/) · [🗄️ Base de datos](base-datos/) · [📡 IoT](iot/) · [📚 Manuales](manuales/)
+[📖 Frontend](Frontend/) · [⚙️ Backend](backend/) · [🗄️ Base de datos](base-datos/) · [📡 IoT](iot/) · [📚 Manuales](manuales/)
 
 </div>
 
@@ -97,7 +97,7 @@ Sistema-Web-Hemoglobina/
 ├── 📁 SistemaHB/          → Carpeta adicional del proyecto
 ├── 🗜️ SistemaHB.rar       → Archivo comprimido del proyecto
 │
-├── 🖥️ frontend/           → Interfaz web
+├── 🖥️ Frontend/           → Interfaz web
 ├── ⚙️ backend/            → API
 ├── 🗄️ base-datos/         → Scripts y modelo de datos
 ├── 📡 iot/                → Sensor y firmware
